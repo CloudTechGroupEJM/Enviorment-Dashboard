@@ -1,0 +1,64 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Build output
+bin/
+build/
+dist/
+
+# Go coverage / profiling
+coverage.out
+coverage.html
+*.coverprofile
+*.prof
+*.pprof
+
+# Dependency folders
+vendor/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Firebase / credentials / secrets
+firebase-key.json
+serviceAccountKey.json
+*.credentials.json
+*.firebase.json
+secrets/
+credentials/
+
+# Logs
+*.log
+logs/
+
+# Temp files
+tmp/
+temp/
+*.tmp
+
+# IDE / editor
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker local override
+docker-compose.override.yml
+
+# Test artifacts
+test-results/
+coverage/
