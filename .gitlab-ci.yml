@@ -1,0 +1,62 @@
+image: golang:1.25.6-alpine
+
+stages:
+  - lint
+  - test
+  - build
+#  - docker #TODO: Uncomment when docker is set up
+
+variables:
+  GO_MODULE: "envdash"
+  #DOCKER_IMAGE: "$CI_REGISTRY_IMAGE" #TODO: Uncomment when docker is set up
+  #DOCKER_TAG: "$CI_COMMIT_SHORT_SHA" #TODO: Uncomment when docker is set up
+
+# Cache Go modules between jobs
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .go-cache/
+
+before_script:
+  - export GOPATH="$CI_PROJECT_DIR/.go-cache"
+  - export PATH="$GOPATH/bin:$PATH"
+
+# Linting job using go vet
+lint:
+  stage: lint
+  script:
+    - go vet ./...
+  only:
+    - merge_requests
+    - main
+  allow_failure: true
+
+# Testing job with coverage reporting
+test:
+  stage: test
+  script:
+    - CGO_ENABLED=1 go test -v -race -coverprofile=coverage.out ./...
+    - go tool cover -func=coverage.out
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  artifacts:
+    paths:
+      - coverage.out
+    expire_in: 3 days
+  only:
+    - merge_requests
+    - main
+  allow_failure: true
+
+# Build job to create the binary
+build:
+  stage: build
+  script:
+    - CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o app ./cmd/main.go
+  artifacts:
+    paths:
+      - app
+    expire_in: 1 hour
+  only:
+    - merge_requests
+    - main
+  allow_failure: true
