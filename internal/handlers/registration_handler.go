@@ -1,3 +1,7 @@
 package handlers
 
-// Needs implementation
+import "net/http"
+
+func registrationsHandler(router *http.ServeMux) {
+
+}

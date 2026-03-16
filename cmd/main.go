@@ -1,9 +1,14 @@
 package main
 
-import "fmt"
+import (
+	"envdash/internal/config"
+	"envdash/internal/app"
 
+)
+
+/*
+Starting Point
+*/
 func main() {
-	fmt.Println("Hello, Cloud!")
+	app.StartServer(config.PORT)
 }
-
-// Needs implementation

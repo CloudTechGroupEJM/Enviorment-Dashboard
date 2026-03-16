@@ -1,3 +1,10 @@
 package handlers
 
-// Needs implementation
+import "net/http"
+
+func statusHandler(router *http.ServeMux) {
+
+}
+
+
+

@@ -1,3 +1,7 @@
 package handlers
 
-// Needs implementation
+import "net/http"
+
+func dashboardsHandler(router *http.ServeMux) {
+
+}

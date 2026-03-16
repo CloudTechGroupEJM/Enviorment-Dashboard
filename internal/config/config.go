@@ -1,3 +1,38 @@
 package config
 
-// Needs implementation
+// Port number the server running
+const PORT = "8080"
+
+//Version
+const APPLICATION_VERSION = "v1"
+
+
+//PATHs
+const STATUS_PAGE_PATH = " /envdash/"+APPLICATION_VERSION+"/status/"
+const REGISTRATIONS_PAGE_PATH = " /envdash/"+APPLICATION_VERSION+"/registrations/"
+const DASHBOARDS_PAGE_PATH = " /envdash/"+APPLICATION_VERSION+"/dashboards/"
+const NOTIFICATION_PAGE_PATH = " /envdash/"+APPLICATION_VERSION+"/notifications/"
+const SLASH = "/"
+
+//APIs
+const REST_COUNTRIES_API = "https://restcountries.com/v3.1/"
+const CURRENCIES_API = "http://129.241.150.113:9090/currency/"
+const OPENAQ_API = "https://api.openaq.org/v3"
+const NOMINATIM_API = "https://nominatim.openstreetmap.org/"
+
+//API Path Rest Countries
+const PATH_REST_ALPHA = "alpha/"
+const PATH_REST_CURRENCY = "currency/"
+
+//API filters Rest Countries
+const FILTER_CURRENCY = "?fields=currencies"
+
+//API Path Rest NOMINATIM
+const PATH_NOMINATIM_SEARCH = "search?" // after the question mark comes the thing your are going to search for.
+										// Example: city, country, etc
+
+
+
+//Application information
+const HEADER_CONTENT_TYPE   = "Content-Type"
+const APPLICATION_JSON = "Application/JSON"
