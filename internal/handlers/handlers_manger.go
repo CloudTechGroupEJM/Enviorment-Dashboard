@@ -1,6 +1,6 @@
 package handlers
 
-import(
+import (
 	"net/http"
 )
 
@@ -15,7 +15,6 @@ func SetupAllHandlers(router *http.ServeMux) {
 	authHandler(router)
 	registrationsHandler(router)
 	notificationsHandler(router)
-	statusHandler(router)
+	StatusRouter(router)
 	dashboardsHandler(router)
 }
-
