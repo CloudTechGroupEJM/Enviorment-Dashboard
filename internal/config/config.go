@@ -42,3 +42,4 @@ const HEADER_CONTENT_TYPE = "Content-Type"
 const APPLICATION_JSON = "Application/JSON"
 
 // API keys
+const OPENAQ_KEY = "apiKEY"
