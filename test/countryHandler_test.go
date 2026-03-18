@@ -1,4 +1,4 @@
-package handlers_test
+package test_test
 
 import (
 	"errors"
