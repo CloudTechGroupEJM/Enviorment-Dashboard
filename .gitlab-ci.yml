@@ -1,7 +1,7 @@
 image: golang:1.25.6-alpine
 
 stages:
-  - lint
+  - vet
   - test
   - build
 #  - docker #TODO: Uncomment when docker is set up
@@ -22,30 +22,26 @@ before_script:
   - export PATH="$GOPATH/bin:$PATH"
 
 # Linting job using go vet
-lint:
-  stage: lint
+vet:
+  stage: vet
   script:
     - go vet ./...
   only:
     - merge_requests
     - main
-  allow_failure: true
 
 # Testing job with coverage reporting
 test:
   stage: test
   script:
-    - CGO_ENABLED=1 go test -v -race -coverprofile=coverage.out ./...
-    - go tool cover -func=coverage.out
-  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+    - CGO_ENABLED=0 go test -v ./...
   artifacts:
     paths:
-      - coverage.out
-    expire_in: 3 days
+      - ./test
+    expire_in: 1 day
   only:
     - merge_requests
     - main
-  allow_failure: true
 
 # Build job to create the binary
 build:
@@ -59,4 +55,3 @@ build:
   only:
     - merge_requests
     - main
-  allow_failure: true
