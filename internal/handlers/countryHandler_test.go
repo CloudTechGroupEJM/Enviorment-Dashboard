@@ -1,4 +1,4 @@
-package test_test
+package handlers_test
 
 import (
 	"errors"
@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"envdash/internal/handlers"
 	"envdash/internal/structs"
 )
 
@@ -49,7 +48,7 @@ func TestGetCountryInfoStructReturnsMappedCountryOnValidResponse(t *testing.T) {
 		]`), nil
 	})
 
-	got, err := handlers.GetCountryInfoStruct("NO")
+	got, err := GetCountryInfoStruct("NO")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -77,7 +76,7 @@ func TestGetCountryInfoStructReturnsErrorWhenRequestFails(t *testing.T) {
 		return nil, errors.New("network down")
 	})
 
-	_, err := handlers.GetCountryInfoStruct("NO")
+	_, err := GetCountryInfoStruct("NO")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -88,7 +87,7 @@ func TestGetCountryInfoStructReturnsErrorWhenResponseBodyIsInvalidJSON(t *testin
 		return jsonResponse(http.StatusOK, `{not-json}`), nil
 	})
 
-	_, err := handlers.GetCountryInfoStruct("NO")
+	_, err := GetCountryInfoStruct("NO")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -108,7 +107,7 @@ func TestGetCountryInfoStructReturnsEmptyBaseCurrencyWhenCurrenciesAreMissing(t 
 		]`), nil
 	})
 
-	got, err := handlers.GetCountryInfoStruct("NO")
+	got, err := GetCountryInfoStruct("NO")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -128,7 +127,7 @@ func TestGetCountryInfoStructPanicsWhenAPIResponseContainsNoCountries(t *testing
 		}
 	}()
 
-	_, _ = handlers.GetCountryInfoStruct("NO")
+	_, _ = GetCountryInfoStruct("NO")
 }
 
 func TestGetCountryInfoStructPanicsWhenCapitalOrCoordinatesAreMissing(t *testing.T) {
@@ -152,5 +151,5 @@ func TestGetCountryInfoStructPanicsWhenCapitalOrCoordinatesAreMissing(t *testing
 		}
 	}()
 
-	_, _ = handlers.GetCountryInfoStruct("NO")
+	_, _ = GetCountryInfoStruct("NO")
 }
