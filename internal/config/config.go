@@ -14,7 +14,7 @@ const NOTIFICATION_PAGE_PATH = " /envdash/" + APPLICATION_VERSION + "/notificati
 const SLASH = "/"
 
 // APIs
-const REST_COUNTRIES_API = "http://129.241.150.113:8080/v3.1"
+const REST_COUNTRIES_API = "http://129.241.150.113:8080/v3.1/"
 const CURRENCIES_API = "http://129.241.150.113:9090/currency/"
 const OPENAQ_API = "https://api.openaq.org/v3"
 const NOMINATIM_API = "https://nominatim.openstreetmap.org/"
