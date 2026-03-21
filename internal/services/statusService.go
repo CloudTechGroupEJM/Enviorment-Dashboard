@@ -1,6 +1,7 @@
 package services
 
 import (
+	"envdash/internal/client"
 	"envdash/internal/config"
 	"envdash/internal/structs"
 	"fmt"
@@ -8,17 +9,23 @@ import (
 	"time"
 )
 
+// StatusInternal
 // get the start time
+// holds a statusClient to get the HTTP functinaltiy
 type StatusInternal struct {
 	startTime time.Time
+	client    *client.StatusClient
 }
 
 // StatusService
-// start the status service, and sets startTime
+// start the status service, creates a client and sets startTime
 // used as a receiver to organize the status related methods
-// Need to access the start time
+// Needed to access the start time
 func StatusService(startTime time.Time) *StatusInternal {
-	return &StatusInternal{startTime: startTime}
+	return &StatusInternal{
+		startTime: startTime,
+		client:    client.NewStatusClient(),
+	}
 }
 
 // GetStatus
@@ -37,52 +44,6 @@ func (s *StatusInternal) GetStatus() *structs.StatusResponse {
 	}
 }
 
-// probeHeadEndPoint
-// sends a head request to the endpoint to get the status
-// only useful for endpoints that support it
-func (s *StatusInternal) probeHeadEndPoint(url string) (int, error) {
-	resp, err := http.Head(url)
-	if err != nil {
-		return http.StatusServiceUnavailable, err
-	}
-	defer resp.Body.Close()
-
-	return resp.StatusCode, nil
-}
-
-// getStatus
-// gets the status code, with configurable header key and header value
-// some endpoint need this to allow for usage
-// todo: check if switch to HEAD method works
-func (s *StatusInternal) getStatus(url string, headerKey string, headerValue string) int {
-	client := http.Client{}
-
-	//check bad url
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return http.StatusServiceUnavailable
-	}
-
-	// set api key header if provided
-	if headerValue != "" {
-		req.Header.Set("X-API-Key", headerValue)
-	}
-
-	// set custom header if provided
-	if headerKey != "" {
-		req.Header.Set(headerKey, headerValue)
-	}
-
-	//check no request sent
-	res, errRequest := client.Do(req)
-	if errRequest != nil {
-		return http.StatusServiceUnavailable
-	}
-	defer res.Body.Close()
-
-	return res.StatusCode
-}
-
 // probeAllEndpoints
 // checks all the endpoints using get probeHeadEndPoint and getStatus
 // returns a map of the status codes for all endpoints
@@ -95,16 +56,16 @@ func (s *StatusInternal) probeAllEndpoints() map[string]int {
 
 	healthStatuses := make(map[string]int)
 	for name, url := range endpoints {
-		statusCode, err := s.probeHeadEndPoint(url)
+		statusCode, err := s.client.ProbeHeadEndpoint(url)
 		if err != nil {
 			statusCode = http.StatusServiceUnavailable
 		}
 		healthStatuses[name] = statusCode
 	}
 
-	healthStatuses["openaq"] = s.getStatus(config.OPENAQ_PROBE, "", config.OPENAQ_KEY)
-	healthStatuses["nominatim"] = s.getStatus(config.NOMINATIM_PROBE, "User-Agent", "evdash/")
-	healthStatuses["currency"] = s.getStatus(config.CURRENCIES_API_PROBE, "", "")
+	healthStatuses["openaq"] = s.client.ProbeGetEndpoint(config.OPENAQ_PROBE, "", config.OPENAQ_KEY)
+	healthStatuses["nominatim"] = s.client.ProbeGetEndpoint(config.NOMINATIM_PROBE, "User-Agent", "evdash/")
+	healthStatuses["currency"] = s.client.ProbeGetEndpoint(config.CURRENCIES_API_PROBE, "", "")
 
 	return healthStatuses
 }
