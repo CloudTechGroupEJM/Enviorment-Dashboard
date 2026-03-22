@@ -11,9 +11,8 @@ import (
 // Firebase context and client used by Firestore functions throughout the program.
 var firebaseContext context.Context
 
-/*
-Returns Firebase context and initializes if not already done.
-*/
+
+//Returns Firebase context and initializes if not already done.
 func GetFirebaseContext() context.Context {
 	if firebaseContext == nil {
 		firebaseContext = context.Background()
@@ -21,10 +20,9 @@ func GetFirebaseContext() context.Context {
 	return firebaseContext
 }
 
-/*
-Initializes Firebase client and returns reference.
-Returns error if problems during initialization occur.
-*/
+
+//Initializes Firebase client and returns reference.
+//Returns error if problems during initialization occur.
 func GetFirebaseClient() (*firestore.Client, error) {
 	// Firebase initialisation
 	firebaseContext = GetFirebaseContext()
