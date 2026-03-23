@@ -1,6 +1,7 @@
 package services
 
 import (
+	"envdash/internal/config"
 	"errors"
 	"net/http"
 	"strings"
@@ -32,7 +33,7 @@ func stubDefaultTransport(t *testing.T, fn roundTripFunc) {
 
 func TestFetchCountryData_Success(t *testing.T) {
 	stubDefaultTransport(t, func(req *http.Request) (*http.Response, error) {
-		if req.URL.String() != "https://restcountries.com/v3.1/alpha/NO" {
+		if req.URL.String() != config.REST_COUNTRIES_API+config.PATH_REST_ALPHA+"NO" {
 			t.Fatalf("unexpected request url: %s", req.URL.String())
 		}
 		return &http.Response{
