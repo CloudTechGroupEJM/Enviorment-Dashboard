@@ -30,7 +30,7 @@ func GetFirebaseClient() (*firestore.Client, error) {
 	// We use a service account, load credentials file that you downloaded from your project's settings menu.
 	// It should reside in your project directory.
 	// Make sure this file is git-ignored, since it is the access token to the database.
-	credentialsOption := option.WithCredentialsFile("./demo-service-account.json")
+	credentialsOption := option.WithCredentialsFile("envdash/credential/db.json")
 	firebaseApp, firebaseAppInitError := firebase.NewApp(firebaseContext, nil, credentialsOption)
 	if firebaseAppInitError != nil {
 		log.Println(firebaseAppInitError)
@@ -51,4 +51,6 @@ func GetFirebaseClient() (*firestore.Client, error) {
 
 	return client, nil
 }
+
+
 
