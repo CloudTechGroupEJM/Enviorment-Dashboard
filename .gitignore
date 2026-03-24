@@ -62,3 +62,6 @@ docker-compose.override.yml
 # Test artifacts
 test-results/
 coverage/
+
+#credential
+credential/
