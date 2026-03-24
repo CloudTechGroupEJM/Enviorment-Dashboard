@@ -23,7 +23,7 @@ const METRO_API = "https://api.open-meteo.com/v1/forecast"
 // API Probe
 const REST_COUNTRIES_API_PROBE = "http://129.241.150.113:8080/v3.1/alpha?codes=no"
 const OPENAQ_PROBE = "https://api.openaq.org/v3/locations/2178"
-const NOMINATIM_PROBE = "https://nominatim.openstreetmap.org/search?q=London&format=json"
+const NOMINATIM_PROBE = "https://nominatim.openstreetmap.org/status"
 const CURRENCIES_API_PROBE = "http://129.241.150.113:9090/currency/nok" //find better way to do this
 
 // API Path Rest Countries

@@ -49,9 +49,9 @@ func (s *StatusInternal) GetStatus() *structs.StatusResponse {
 // returns a map of the status codes for all endpoints
 func (s *StatusInternal) probeAllEndpoints() map[string]int {
 	endpoints := map[string]string{
-		//cannot have the other methods as they need custom headers or Head not implemented
 		"countries": config.REST_COUNTRIES_API_PROBE,
 		"metro":     config.METRO_API,
+		"nominatim": config.NOMINATIM_PROBE,
 	}
 
 	healthStatuses := make(map[string]int)
@@ -64,7 +64,6 @@ func (s *StatusInternal) probeAllEndpoints() map[string]int {
 	}
 
 	healthStatuses["openaq"] = s.client.ProbeGetEndpoint(config.OPENAQ_PROBE, "", config.OPENAQ_KEY)
-	healthStatuses["nominatim"] = s.client.ProbeGetEndpoint(config.NOMINATIM_PROBE, "User-Agent", "evdash/")
 	healthStatuses["currency"] = s.client.ProbeGetEndpoint(config.CURRENCIES_API_PROBE, "", "")
 
 	return healthStatuses
