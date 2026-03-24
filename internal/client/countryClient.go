@@ -21,7 +21,7 @@ func NewCountryClient() *CountryClient {
 	}
 }
 
-// fetchCountryData retrieves country information from the external country API
+// FetchCountryData retrieves country information from the external country API
 // for the given two-letter country code.
 //
 // Parameters:
@@ -31,7 +31,6 @@ func NewCountryClient() *CountryClient {
 //   - []structs.IncomingCountry: a slice of country info structs populated with
 //     the API response data.
 //   - error: an error if the HTTP request fails or if the response body cannot be decoded.
-
 func (cc *CountryClient) FetchCountryData(countryCode string) ([]structs.IncomingCountry, error) {
 
 	resp, err := http.Get(config.REST_COUNTRIES_API + config.PATH_REST_ALPHA + countryCode)
