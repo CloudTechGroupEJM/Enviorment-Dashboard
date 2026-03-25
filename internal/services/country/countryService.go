@@ -1,4 +1,4 @@
-package services
+package country
 
 import (
 	"envdash/internal/client"

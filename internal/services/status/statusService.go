@@ -1,7 +1,7 @@
-package services
+package status
 
 import (
-	"envdash/internal/client"
+	"envdash/internal/client/status"
 	"envdash/internal/config"
 	"envdash/internal/structs"
 	"fmt"
@@ -14,7 +14,7 @@ import (
 // holds a statusClient to get the HTTP functinaltiy
 type StatusInternal struct {
 	startTime time.Time
-	client    *client.StatusClient
+	client    *status.StatusClient
 }
 
 // StatusService
@@ -24,7 +24,7 @@ type StatusInternal struct {
 func StatusService(startTime time.Time) *StatusInternal {
 	return &StatusInternal{
 		startTime: startTime,
-		client:    client.NewStatusClient(),
+		client:    status.NewStatusClient(),
 	}
 }
 
