@@ -3,17 +3,17 @@ package handlers
 import (
 	"encoding/json"
 	"envdash/internal/config"
-	"envdash/internal/services"
+	"envdash/internal/services/status"
 	"net/http"
 	"time"
 )
 
 // Hold the status service to be used by the handler
-var statusService *services.StatusInternal
+var statusService *status.StatusInternal
 
 // executes once, on runtime
 func init() {
-	statusService = services.StatusService(time.Now())
+	statusService = status.StatusService(time.Now())
 }
 
 // StatusRouter
@@ -25,7 +25,7 @@ func StatusRouter(router *http.ServeMux) {
 // statusHandler
 // handles GET requests for the status endpoint
 // gives error on all other methods
-func statusHandler(service *services.StatusInternal) http.HandlerFunc {
+func statusHandler(service *status.StatusInternal) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
