@@ -20,9 +20,9 @@ type DashboardResponse struct {
 }
 
 type Features struct {
-	Temperature   float64 `json:"temperature"`
-	Precipitation float64 `json:"precipitation"`
-	//AirQuality       AirQuality        `json:"airQuality"` // reused from AQ service
+	Temperature      float64            `json:"temperature"`
+	Precipitation    float64            `json:"precipitation"`
+	AirQuality       map[string]float64 `json:"airQuality"` // reused from AQ service
 	Capital          string             `json:"capital"`
 	Coordinates      map[string]float64 `json:"coordinates"` // reused from Nominatim service
 	Population       int                `json:"population"`
