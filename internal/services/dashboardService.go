@@ -3,6 +3,7 @@ package services
 import (
 	"envdash/internal/services/country"
 	"envdash/internal/structs"
+	"log"
 )
 
 // StatusInternal
@@ -31,16 +32,46 @@ func NewDashboardService() *DashBoardInternal {
 // GetStatus
 // Construct the response for status endpoint
 // todo: error handling _ ignores errors
-func (dashI *DashBoardInternal) GetDashboard(country string) *structs.DashboardResponse {
-	countryInfo, _ := dashI.counSer.GetCountry(country)
-	curInfo, _ := dashI.curSer.GetCurrency(firstCurrency(countryInfo.Currencies), []string{"USD", "EUR"})
 
+func (dashI *DashBoardInternal) GetDashboard(country string) (*structs.DashboardResponse, error) {
+	// Get country info and handle errors
+	countryInfo, err := dashI.counSer.GetCountry(country)
+	if err != nil {
+		log.Printf("Error getting country info for %s: %v", country, err)
+		return nil, err
+	}
+	if countryInfo == nil {
+		log.Printf("Country not found: %s", country)
+		return nil, err
+	}
+
+	// Get currency code
+	currencyCode := firstCurrency(countryInfo.Currencies)
+	if currencyCode == "" {
+		log.Printf("No currency found for country: %s", country)
+		return nil, nil
+	}
+
+	// Get currency info and handle errors
+	curInfo, err := dashI.curSer.GetCurrency(currencyCode, []string{"USD", "EUR"})
+	if err != nil {
+		log.Printf("Error getting currency info: %v", err)
+		return nil, err
+	}
+	if curInfo == nil {
+		log.Printf("No currency data returned for: %s", currencyCode)
+		return nil, nil
+	}
+
+	//todo: add some logic to call on register
+	//ie Area: registration(id)
 	return &structs.DashboardResponse{
 		Country: countryInfo.Name.Common,
 		IsoCode: countryInfo.IsoCode,
 		Features: structs.Features{
 			Temperature:      0,
 			Precipitation:    0,
+			AirQuality:       nil,
 			Capital:          countryInfo.Capital[0],
 			Coordinates:      nil,
 			Population:       countryInfo.Population,
@@ -48,7 +79,7 @@ func (dashI *DashBoardInternal) GetDashboard(country string) *structs.DashboardR
 			TargetCurrencies: curInfo.TargetCurrencies,
 		},
 		LastRetrieval: "",
-	}
+	}, nil
 }
 
 func firstCurrency(currencyMap map[string]struct{}) string {
