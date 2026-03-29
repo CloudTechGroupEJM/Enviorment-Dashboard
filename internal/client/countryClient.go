@@ -39,6 +39,10 @@ func (cc *CountryClient) FetchCountryData(countryCode string) ([]structs.Incomin
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("invalid country code: status code %d", resp.StatusCode)
+	}
+
 	var countryInfo []structs.IncomingCountry
 	if err := json.NewDecoder(resp.Body).Decode(&countryInfo); err != nil {
 		return nil, fmt.Errorf("error parsing country info: %w", err)
