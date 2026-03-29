@@ -27,7 +27,16 @@ func dashboardhandler(service *services.DashBoardInternal) http.HandlerFunc {
 		}
 
 		//go to service layer to get status
-		dashboard := service.GetDashboard(r.PathValue("p1"))
+		dashboard, err := service.GetDashboard(r.PathValue("p1"))
+		if err != nil {
+			http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		if dashboard == nil {
+			http.Error(w, "Country not found", http.StatusNotFound)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(dashboard)
 	}
