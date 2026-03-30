@@ -24,7 +24,7 @@ type Features struct {
 	Precipitation    string             `json:"precipitation"`
 	AirQuality       map[string]float64 `json:"airQuality"` // reused from AQ service
 	Capital          string             `json:"capital"`
-	Coordinates      CoordinateDetails  `json:"coordinates"` // <-- CHANGE THIS
+	Coordinates      CoordinateDetails  `json:"coordinates"`
 	Population       int                `json:"population"`
 	Area             float64            `json:"area"`
 	TargetCurrencies map[string]float64 `json:"targetCurrencies"` // reused from Currency service
