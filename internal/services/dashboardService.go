@@ -10,9 +10,9 @@ import (
 // get the start time
 // holds a statusClient to get the HTTP functinaltiy
 type DashBoardInternal struct {
-	counSer *country.CountryInternal
-	curSer  *CurrencyInternal
-	//metroSer
+	counSer  *country.CountryInternal
+	curSer   *CurrencyInternal
+	metroSer *MetroInternal
 	//aqSer
 }
 
@@ -22,9 +22,9 @@ type DashBoardInternal struct {
 // Needed to access the start time
 func NewDashboardService() *DashBoardInternal {
 	return &DashBoardInternal{
-		counSer: country.NewCountryService(),
-		curSer:  NewCurrencyService(),
-		//metroSer: NewMetroService,
+		counSer:  country.NewCountryService(),
+		curSer:   NewCurrencyService(),
+		metroSer: NewMetroService(),
 		//aqSer:    NewAqService,
 	}
 }
@@ -42,6 +42,12 @@ func (dashI *DashBoardInternal) GetDashboard(country string) (*structs.Dashboard
 	}
 	if countryInfo == nil {
 		log.Printf("Country not found: %s", country)
+		return nil, err
+	}
+
+	metroInfo, err := dashI.metroSer.GetMetro(countryInfo.Coordinates[0], countryInfo.Coordinates[1])
+	if err != nil {
+		log.Printf("Error getting metro info: %v", err)
 		return nil, err
 	}
 
@@ -69,8 +75,8 @@ func (dashI *DashBoardInternal) GetDashboard(country string) (*structs.Dashboard
 		Country: countryInfo.Name.Common,
 		IsoCode: countryInfo.IsoCode,
 		Features: structs.Features{
-			Temperature:      0,
-			Precipitation:    0,
+			Temperature:      metroInfo.MeanTemperature,
+			Precipitation:    metroInfo.MeanPrecipitation,
 			AirQuality:       nil,
 			Capital:          countryInfo.Capital[0],
 			Coordinates:      nil,
