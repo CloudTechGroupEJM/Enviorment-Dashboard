@@ -24,8 +24,13 @@ type Features struct {
 	Precipitation    string             `json:"precipitation"`
 	AirQuality       map[string]float64 `json:"airQuality"` // reused from AQ service
 	Capital          string             `json:"capital"`
-	Coordinates      map[string]float64 `json:"coordinates"` // reused from Nominatim service
+	Coordinates      CoordinateDetails  `json:"coordinates"` // <-- CHANGE THIS
 	Population       int                `json:"population"`
 	Area             float64            `json:"area"`
 	TargetCurrencies map[string]float64 `json:"targetCurrencies"` // reused from Currency service
+}
+
+type CoordinateDetails struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
