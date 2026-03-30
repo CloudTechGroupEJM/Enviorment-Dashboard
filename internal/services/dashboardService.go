@@ -6,9 +6,8 @@ import (
 	"log"
 )
 
-// StatusInternal
-// get the start time
-// holds a statusClient to get the HTTP functinaltiy
+// DashBoardInternal is the internal implementation of the dashbaord service,
+// wrapping all services used by the dashboard.
 type DashBoardInternal struct {
 	counSer  *country.CountryInternal
 	curSer   *CurrencyInternal
@@ -16,10 +15,7 @@ type DashBoardInternal struct {
 	//aqSer
 }
 
-// StatusService
-// start the status service, creates a client and sets startTime
-// used as a receiver to organize the status related methods
-// Needed to access the start time
+// NewDashboardService returns a new DashBoardInternal instance with a configured HTTP client.
 func NewDashboardService() *DashBoardInternal {
 	return &DashBoardInternal{
 		counSer:  country.NewCountryService(),
@@ -29,10 +25,8 @@ func NewDashboardService() *DashBoardInternal {
 	}
 }
 
-// GetStatus
-// Construct the response for status endpoint
-// todo: error handling _ ignores errors
-
+// GetDashboard
+// Used the other services to populate the dashboard fields, and returns the filled struct
 func (dashI *DashBoardInternal) GetDashboard(country string) (*structs.DashboardResponse, error) {
 	// Get country info and handle errors
 	countryInfo, err := dashI.counSer.GetCountry(country)
@@ -88,6 +82,8 @@ func (dashI *DashBoardInternal) GetDashboard(country string) (*structs.Dashboard
 	}, nil
 }
 
+// firstCurrency
+// gets the first currency in the currency map
 func firstCurrency(currencyMap map[string]struct{}) string {
 	for code := range currencyMap {
 		return code
