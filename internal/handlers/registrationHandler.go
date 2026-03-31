@@ -5,24 +5,19 @@ import (
 	"envdash/internal/config"
 	"envdash/internal/services"
 	"envdash/internal/structs"
-	"errors"
 	"log"
 	"net/http"
 	"sync/atomic"
 
 	"cloud.google.com/go/firestore"
-	"google.golang.org/api/iterator"
 )
 
-// Handler holds shared dependencies
 type FirestoreHandler struct {
 	Client *firestore.Client
 }
 
 // atomic counter (safe for concurrent use)
 var requestCounter atomic.Int64
-
-
 
 func InitRegistration(router *http.ServeMux) {
 
@@ -35,43 +30,59 @@ func InitRegistration(router *http.ServeMux) {
 	}
 
 	// Ensure the client is properly closed when the application shuts down.
-	defer client.Close() 
+	defer client.Close()
 
-	firestore := &FirestoreHandler{
+	firestoreHandler := &FirestoreHandler{
 		Client: client,
 	}
 
-	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH, firestore.HandleRegistration)
-
-
-
-
+	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH, firestoreHandler.handleRegistrations)
 }
 
+func (firestoreHandler *FirestoreHandler) handleRegistrations(writer http.ResponseWriter, request *http.Request) {
+	switch request.Method {
+	case http.MethodPost:
+		log.Println("testing POST")
+		firestoreHandler.addCountry(writer, request)
+	case http.MethodGet:
+		log.Println("testing GET")
+	case http.MethodDelete:
+	default:
+		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
 
-
-func (FShandler *FirestoreHandler) addCountry(writer http.ResponseWriter, request *http.Request){
+// functionalities
+func (FShandler *FirestoreHandler) addCountry(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
 	log.Printf("Recieved %s request", request.Method)
 
 	var country *structs.RegisterCountry
 
-	if err := json.NewDecoder(request.Body).Decode(&country); err != nil {
+	if decoderErr := json.NewDecoder(request.Body).Decode(&country); decoderErr != nil {
 		http.Error(writer, "Invalid JSON payload", http.StatusBadRequest)
 	}
+
+	countryVerfication(country, writer)
 }
 
 
-func (FShandler *FirestoreHandler) HandleRegistration(writer http.ResponseWriter, request *http.Request) {
-	switch request.Method {
-	case http.MethodPost:
-		FShandler.addCountry(writer, request)
-	case http.MethodGet:
-		// h.getDocument(w, r)
-	case http.MethodDelete:
-		// h.deleteDocument(w, r)
-	default:
-		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
+
+func countryVerfication(country *structs.RegisterCountry, writer http.ResponseWriter){
+
+	if country.Name.Common == "" {
+		http.Error(writer, "Missing required field: name", http.StatusBadRequest)
+		return
+	}
+
+	if country.IsoCode == ""{
+		http.Error(writer, "Missing required field: isoCode", http.StatusBadRequest)
+		return
+	}
+
+	if len(country.IsoCode) == 2{
+		http.Error(writer, "IsoCode must be two letter.", http.StatusBadRequest)
+		return
 	}
 }
