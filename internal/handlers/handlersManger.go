@@ -13,7 +13,7 @@ Parameters:
 */
 func SetupAllHandlers(router *http.ServeMux) {
 	authHandler(router)
-	registrationsHandler(router)
+	InitRegistration(router)
 	notificationsHandler(router)
 	StatusRouter(router)
 	dashboardsHandler(router)

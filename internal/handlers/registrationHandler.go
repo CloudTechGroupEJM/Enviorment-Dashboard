@@ -2,81 +2,76 @@ package handlers
 
 import (
 	"encoding/json"
+	"envdash/internal/config"
+	"envdash/internal/services"
 	"envdash/internal/structs"
 	"errors"
 	"log"
 	"net/http"
+	"sync/atomic"
 
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
 )
 
 // Handler holds shared dependencies
-type FSClient struct {
+type FirestoreHandler struct {
 	Client *firestore.Client
 }
 
+// atomic counter (safe for concurrent use)
+var requestCounter atomic.Int64
 
 
 
-func registrationsHandler(router *http.ServeMux) {
+func InitRegistration(router *http.ServeMux) {
+
+	// initalizing firebase
+	client, clientErrInit := services.GetFirebaseClient()
+
+	if clientErrInit != nil {
+		log.Println("Error occurred when initializing Firebase client.")
+		return
+	}
+
+	// Ensure the client is properly closed when the application shuts down.
+	defer client.Close() 
+
+	firestore := &FirestoreHandler{
+		Client: client,
+	}
+
+	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH, firestore.HandleRegistration)
+
+
+
 
 }
 
-func (client *FSClient) HandleMessage(responseWriter http.ResponseWriter, request *http.Request) {
+
+
+func (FShandler *FirestoreHandler) addCountry(writer http.ResponseWriter, request *http.Request){
+	defer request.Body.Close()
+
+	log.Printf("Recieved %s request", request.Method)
+
+	var country *structs.RegisterCountry
+
+	if err := json.NewDecoder(request.Body).Decode(&country); err != nil {
+		http.Error(writer, "Invalid JSON payload", http.StatusBadRequest)
+	}
+}
+
+
+func (FShandler *FirestoreHandler) HandleRegistration(writer http.ResponseWriter, request *http.Request) {
 	switch request.Method {
-	// case http.MethodPost:
-	// h.addDocument(responseWriter, request)
+	case http.MethodPost:
+		FShandler.addCountry(writer, request)
 	case http.MethodGet:
-		client.getDocument(responseWriter, request)
-	// case http.MethodDelete:
-	// h.deleteDocument(responseWriter, request)
+		// h.getDocument(w, r)
+	case http.MethodDelete:
+		// h.deleteDocument(w, r)
 	default:
-		http.Error(responseWriter, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-// ----------- GET /messages or /messages/{id} -----------
-func (client *FSClient) getDocument(responseWriter http.ResponseWriter, request *http.Request) {
-	log.Printf("Received %s request", request.Method)
-
-	id := request.PathValue("id")
-	ctx := request.Context()
-
-	responseWriter.Header().Set("Content-Type", "application/json")
-
-	// ----------- GET ALL -----------
-	if id == "" {
-		iter := client.Client.Collection(structs.CollectionName).Documents(ctx)
-		defer iter.Stop()
-
-		var results []map[string]interface{}
-
-		for {
-			doc, err := iter.Next()
-			if errors.Is(err, iterator.Done) {
-				break
-			}
-			if err != nil {
-				log.Printf("Error iterating documents: %v", err)
-				http.Error(responseWriter, "Error retrieving data", http.StatusInternalServerError)
-				return
-			}
-
-			results = append(results, doc.Data())
-		}
-
-		_ = json.NewEncoder(responseWriter).Encode(results)
-		return
-	}
-
-	// ----------- GET ONE -----------
-	doc, err := client.Client.Collection(structs.CollectionName).Doc(id).Get(ctx)
-	if err != nil {
-		log.Printf("Error retrieving document %s: %v", id, err)
-		http.Error(responseWriter, "Document not found", http.StatusNotFound)
-		return
-	}
-
-	_ = json.NewEncoder(responseWriter).Encode(doc.Data())
 }
