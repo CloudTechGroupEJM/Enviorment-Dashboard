@@ -5,13 +5,15 @@ import (
 	"envdash/internal/config"
 	"envdash/internal/store"
 	"envdash/internal/structs"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
 	"sync/atomic"
 	"time"
-
+	"context"
 	"cloud.google.com/go/firestore"
+	"google.golang.org/api/iterator"
 )
 
 type FirestoreHandler struct {
@@ -31,6 +33,8 @@ func InitRegistration(router *http.ServeMux) {
 		return
 	}
 
+	defer client.Close()
+
 	firestoreHandler := &FirestoreHandler{
 		Client: client,
 	}
@@ -48,10 +52,9 @@ func InitRegistration(router *http.ServeMux) {
 func (firestoreHandler *FirestoreHandler) handleRegistrations(writer http.ResponseWriter, request *http.Request) {
 	switch request.Method {
 	case http.MethodPost:
-		log.Println("testing POST")
 		firestoreHandler.addCountry(writer, request)
 	case http.MethodGet:
-		log.Println("testing GET")
+		firestoreHandler.getRegistrations(writer, request)
 	case http.MethodDelete:
 		log.Println("testing Delete")
 	default:
@@ -63,7 +66,7 @@ func (firestoreHandler *FirestoreHandler) handleRegistrations(writer http.Respon
 func (FShandler *FirestoreHandler) addCountry(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
-	log.Printf("Recieved %s request", request.Method)
+	log.Printf("%s request recived", request.Method)
 
 	var country structs.RegisterCountry
 
@@ -72,7 +75,7 @@ func (FShandler *FirestoreHandler) addCountry(writer http.ResponseWriter, reques
 		return
 	}
 
-    country.IsoCode = strings.ToUpper(strings.TrimSpace(country.IsoCode))
+  country.IsoCode = strings.ToUpper(strings.TrimSpace(country.IsoCode))
 
 	valdiationResult := countryValidation(&country, writer)
 
@@ -99,7 +102,8 @@ func (FShandler *FirestoreHandler) addCountry(writer http.ResponseWriter, reques
 		})
 
 	} else {
-		return
+		log.Println("Some values doesnt match the matched struct.")
+		return 
 	}
 
 }
@@ -124,8 +128,61 @@ func countryValidation(country *structs.RegisterCountry, writer http.ResponseWri
 	return true
 }
 
-func (FShandler *FirestoreHandler) GetRegistrations(writer http.ResponseWriter, request *http.Request) {
+//retrive a specific document by id or all documents if no id i specified
+func (FShandler *FirestoreHandler) getRegistrations(writer http.ResponseWriter, request *http.Request) {
 	log.Printf("%s request recived", request.Method)
 
+	registrationID := request.PathValue("id")
 
+	context := request.Context()
+	
+	writer.Header().Set("Content-Type", "application/json")
+
+	if registrationID == "" {
+		retriveAllRegistrations(FShandler, context, writer)
+		return
+	} 
+
+	retriveSingleRegistration(FShandler, context, registrationID, writer)
+}
+
+
+
+
+
+func retriveAllRegistrations(FShandler *FirestoreHandler, context context.Context, writer http.ResponseWriter){
+	docIterator := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Documents(context)
+		defer docIterator.Stop()
+
+		var results []map[string]interface{}
+
+		for {
+			registration, registrationErr := docIterator.Next()
+			log.Println(registration)
+			if errors.Is(registrationErr, iterator.Done) {
+				break
+			}
+			if registrationErr != nil {
+				log.Printf("Error iterating documents: %v", registrationErr)
+				http.Error(writer, "Error retrieving data", http.StatusInternalServerError)
+				return
+			}
+
+			results = append(results, registration.Data())
+		}
+
+		_ = json.NewEncoder(writer).Encode(results)
+}
+
+
+
+
+func retriveSingleRegistration(FShandler *FirestoreHandler,context context.Context, registrationID string ,writer http.ResponseWriter){
+	registration, registrationErr := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(context)
+	if registrationErr != nil {
+		log.Printf("Error retrieving document %s: %v", registrationID, registrationErr)
+		http.Error(writer, "Document not found", http.StatusNotFound)
+		return
+	}
+	_ = json.NewEncoder(writer).Encode(registration.Data())
 }
