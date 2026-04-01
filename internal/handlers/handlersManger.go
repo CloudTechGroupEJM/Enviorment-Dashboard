@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net/http"
+
+	"cloud.google.com/go/firestore"
 )
 
 /*
@@ -11,9 +13,13 @@ This function initializes auth, registrations, notification, status and dashboar
 Parameters:
   - router: *http.ServeMux - The HTTP request multiplexer to register handlers with
 */
-func SetupAllHandlers(router *http.ServeMux) {
+func SetupAllHandlers(router *http.ServeMux, client *firestore.Client) {
+
+
+
+
 	authHandler(router)
-	InitRegistration(router)
+	InitRegistration(router,client)
 	notificationsHandler(router)
 	StatusRouter(router)
 	dashboardsHandler(router)

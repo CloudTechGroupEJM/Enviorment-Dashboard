@@ -23,17 +23,8 @@ type FirestoreHandler struct {
 // atomic counter (safe for concurrent use)
 var requestCounter atomic.Int64
 
-func InitRegistration(router *http.ServeMux) {
+func InitRegistration(router *http.ServeMux, client *firestore.Client) {
 
-	// initalizing firebase
-	client, clientErrInit := store.GetFirebaseClient()
-
-	if clientErrInit != nil {
-		log.Println("Error occurred when initializing Firebase client.")
-		return
-	}
-
-	
 	firestoreHandler := &FirestoreHandler{
 		Client: client,
 	}
