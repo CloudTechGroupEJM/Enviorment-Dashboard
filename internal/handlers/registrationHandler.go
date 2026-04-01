@@ -44,18 +44,22 @@ func InitRegistration(router *http.ServeMux, client *firestore.Client) {
 func (firestoreHandler *FirestoreHandler) handleRegistrations(writer http.ResponseWriter, request *http.Request) {
 	switch request.Method {
 	case http.MethodPost:
-		firestoreHandler.addCountry(writer, request)
+		firestoreHandler.addRegistration(writer, request)
 	case http.MethodGet:
 		firestoreHandler.getRegistrations(writer, request)
 	case http.MethodDelete:
-		log.Println("testing Delete")
+		firestoreHandler.deleteRegistrations(writer, request)
 	default:
 		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
+		return
 	}
 }
 
+
+
+
 // functionalities
-func (FShandler *FirestoreHandler) addCountry(writer http.ResponseWriter, request *http.Request) {
+func (FShandler *FirestoreHandler) addRegistration(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
 	log.Printf("%s request recived", request.Method)
@@ -100,6 +104,8 @@ func (FShandler *FirestoreHandler) addCountry(writer http.ResponseWriter, reques
 
 }
 
+
+//validate if name and isocode can go through as required
 func countryValidation(country *structs.RegisterCountry, writer http.ResponseWriter) bool {
 
 	if country.Name == "" {
@@ -138,10 +144,6 @@ func (FShandler *FirestoreHandler) getRegistrations(writer http.ResponseWriter, 
 	retriveSingleRegistration(FShandler, context, registrationID, writer)
 }
 
-
-
-
-
 func retriveAllRegistrations(FShandler *FirestoreHandler, context context.Context, writer http.ResponseWriter){
 	docIterator := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Documents(context)
 		defer docIterator.Stop()
@@ -166,9 +168,6 @@ func retriveAllRegistrations(FShandler *FirestoreHandler, context context.Contex
 		_ = json.NewEncoder(writer).Encode(results)
 }
 
-
-
-
 func retriveSingleRegistration(FShandler *FirestoreHandler,context context.Context, registrationID string ,writer http.ResponseWriter){
 	registration, registrationErr := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(context)
 	if registrationErr != nil {
@@ -177,4 +176,46 @@ func retriveSingleRegistration(FShandler *FirestoreHandler,context context.Conte
 		return
 	}
 	_ = json.NewEncoder(writer).Encode(registration.Data())
+}
+
+
+
+func (FShandler *FirestoreHandler) deleteRegistrations(writer http.ResponseWriter, request *http.Request) {
+	log.Printf("%s request recived", request.Method)
+
+	registrationID := request.PathValue("id")
+	context := request.Context()
+
+	if registrationID == ""{
+		registrationIterator := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Documents(context)
+
+		defer registrationIterator.Stop()
+
+		for {
+			registration, registrationErr := registrationIterator.Next()
+			if !errors.Is(registrationErr, iterator.Done){
+				if registrationErr != nil {
+					log.Printf("Error iterating documents: %v", registrationErr)
+					http.Error(writer, "Error deleting document", http.StatusInternalServerError)
+					return
+				}
+
+				if _, err := registration.Ref.Delete(context); err != nil {
+					log.Printf("Error deleting document: %v", err)
+					http.Error(writer, "Error deleting document", http.StatusInternalServerError)
+					return
+				}
+			}else{
+				writer.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+	}
+	
+	_, registrationErr := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Delete(context)
+	if registrationErr != nil {
+		log.Printf("Error deleting document %s: %v", registrationID, registrationErr)
+		http.Error(writer, "Error deleting document", http.StatusInternalServerError)
+		return
+	}
 }
