@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"envdash/internal/config"
-	"envdash/internal/services"
+	"envdash/internal/store"
 	"envdash/internal/structs"
 	"log"
 	"net/http"
@@ -22,7 +22,7 @@ var requestCounter atomic.Int64
 func InitRegistration(router *http.ServeMux) {
 
 	// initalizing firebase
-	client, clientErrInit := services.GetFirebaseClient()
+	client, clientErrInit := store.GetFirebaseClient()
 
 	if clientErrInit != nil {
 		log.Println("Error occurred when initializing Firebase client.")
@@ -64,12 +64,12 @@ func (FShandler *FirestoreHandler) addCountry(writer http.ResponseWriter, reques
 		http.Error(writer, "Invalid JSON payload", http.StatusBadRequest)
 	}
 
-	countryVerfication(country, writer)
+	countryValidation(country, writer)
 }
 
 
 
-func countryVerfication(country *structs.RegisterCountry, writer http.ResponseWriter){
+func countryValidation(country *structs.RegisterCountry, writer http.ResponseWriter){
 
 	if country.Name.Common == "" {
 		http.Error(writer, "Missing required field: name", http.StatusBadRequest)
@@ -81,7 +81,7 @@ func countryVerfication(country *structs.RegisterCountry, writer http.ResponseWr
 		return
 	}
 
-	if len(country.IsoCode) == 2{
+	if len(country.IsoCode) != 2{
 		http.Error(writer, "IsoCode must be two letter.", http.StatusBadRequest)
 		return
 	}
