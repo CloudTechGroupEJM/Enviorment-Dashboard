@@ -1,25 +1,21 @@
 package structs
 
+import "time"
+
 type RegisterCountry struct {
-	Name struct {
-		Common string `json:"common"`
-	} `json:"name"`
-
-	IsoCode string `json:"isoCode"`
-
-	Features struct {
-		Temperature      bool     `json:"temperature"`
-		Precipitation    bool     `json:"precipitation"`
-		AirQuality       bool     `json:"airQuality"`
-		Capital          bool     `json:"capital"`
-		Coordinates      bool     `json:"coordinates"`
-		Area             bool     `json:"area"`
-		TargetCurrencies []string `json:"targetCurrencies"`
-	} `json:"features"`
+	ID         string    `firestore:"id,omitempty" json:"id"`
+	Name       string    `firestore:"name" json:"name"`
+	IsoCode    string    `firesstore:"isoCode" json:"isoCode"`
+	Features   Features  `firestore:"features" json:"features"`
+	LastChange time.Time `firestore:"lastChange" json:"lastChange"`
 }
 
-
-type RegistrationComplete struct{
-	ID string `json:"id"`
-	LastChange string `json:"lastChange"`
+type Features struct {
+	Temperature      bool     `firesstore:"temperature" json:"temperature"`
+	Precipitation    bool     `firesstore:"precipitation" json:"precipitation"`
+	AirQuality       bool     `firesstore:"airQuality" json:"airQuality"`
+	Capital          bool     `firesstore:"capital" json:"capital"`
+	Coordinates      bool     `firesstore:"coordinates" json:"coordinates"`
+	Area             bool     `firesstore:"area" json:"area"`
+	TargetCurrencies []string `firesstore:"targetCurrencies" json:"targetCurrencies"`
 }
