@@ -7,6 +7,7 @@ import (
 	"envdash/internal/structs"
 	"log"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -71,6 +72,8 @@ func (FShandler *FirestoreHandler) addCountry(writer http.ResponseWriter, reques
 		return
 	}
 
+    country.IsoCode = strings.ToUpper(strings.TrimSpace(country.IsoCode))
+
 	valdiationResult := countryValidation(&country, writer)
 
 	if valdiationResult == true {
@@ -86,7 +89,7 @@ func (FShandler *FirestoreHandler) addCountry(writer http.ResponseWriter, reques
 			return
 		}
 
-		log.Printf("Document Created carries ID: %s", generatedID)
+		log.Println("Document Created carries ID: " + generatedID.ID)
 
 		writer.Header().Set("Content-Type", "application/json")
 		writer.WriteHeader(http.StatusCreated)
@@ -124,6 +127,5 @@ func countryValidation(country *structs.RegisterCountry, writer http.ResponseWri
 func (FShandler *FirestoreHandler) GetRegistrations(writer http.ResponseWriter, request *http.Request) {
 	log.Printf("%s request recived", request.Method)
 
-	// id := request.PathValue(id)
 
 }
