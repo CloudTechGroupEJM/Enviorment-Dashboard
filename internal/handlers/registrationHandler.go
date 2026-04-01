@@ -33,20 +33,21 @@ func InitRegistration(router *http.ServeMux) {
 		return
 	}
 
-	defer client.Close()
-
+	
 	firestoreHandler := &FirestoreHandler{
 		Client: client,
 	}
-
+	
 	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH,
 		func(writer http.ResponseWriter, request *http.Request) {
 			firestoreHandler.handleRegistrations(writer, request)
 		})
 	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH+"{id}",
-		func(writer http.ResponseWriter, request *http.Request) {
-			firestoreHandler.handleRegistrations(writer, request)
-		})
+	func(writer http.ResponseWriter, request *http.Request) {
+		firestoreHandler.handleRegistrations(writer, request)
+	})
+		
+	// client.Close()
 }
 
 func (firestoreHandler *FirestoreHandler) handleRegistrations(writer http.ResponseWriter, request *http.Request) {
