@@ -3,7 +3,7 @@ package structs
 import "time"
 
 type RegisterCountry struct {
-	ID         string    `firestore:"id,omitempty" json:"id"`
+	// ID         string    `firestore:"id,omitempty" json:"id"`
 	Name       string    `firestore:"name" json:"name"`
 	IsoCode    string    `firesstore:"isoCode" json:"isoCode"`
 	Features   Features  `firestore:"features" json:"features"`
