@@ -20,8 +20,6 @@ type FirestoreHandler struct {
 	Client *firestore.Client
 }
 
-// atomic counter (safe for concurrent use)
-var requestCounter atomic.Int64
 
 func InitRegistration(router *http.ServeMux, client *firestore.Client) {
 
@@ -33,12 +31,11 @@ func InitRegistration(router *http.ServeMux, client *firestore.Client) {
 		func(writer http.ResponseWriter, request *http.Request) {
 			firestoreHandler.handleRegistrations(writer, request)
 		})
+	
 	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH+"{id}",
 	func(writer http.ResponseWriter, request *http.Request) {
 		firestoreHandler.handleRegistrations(writer, request)
 	})
-		
-	// client.Close()
 }
 
 func (firestoreHandler *FirestoreHandler) handleRegistrations(writer http.ResponseWriter, request *http.Request) {
@@ -56,9 +53,30 @@ func (firestoreHandler *FirestoreHandler) handleRegistrations(writer http.Respon
 }
 
 
+//validate if name and isocode can go through as required
+func registrationValidation(country *structs.RegisterCountry, writer http.ResponseWriter) bool {
+
+	if country.Name == "" {
+		http.Error(writer, "Missing required field: name", http.StatusBadRequest)
+		return false
+	}
+
+	if country.IsoCode == "" {
+		http.Error(writer, "Missing required field: isoCode", http.StatusBadRequest)
+		return false
+	}
+
+	if len(country.IsoCode) != 2 {
+		http.Error(writer, "IsoCode must be two letter.", http.StatusBadRequest)
+		return false
+	}
+
+	return true
+}
 
 
-// functionalities
+
+// POST function
 func (FShandler *FirestoreHandler) addRegistration(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
@@ -73,9 +91,8 @@ func (FShandler *FirestoreHandler) addRegistration(writer http.ResponseWriter, r
 
   country.IsoCode = strings.ToUpper(strings.TrimSpace(country.IsoCode))
 
-	valdiationResult := countryValidation(&country, writer)
 
-	if valdiationResult == true {
+	if registrationValidation(&country, writer) == true {
 
 		country.LastChange = time.Now()
 
@@ -105,27 +122,9 @@ func (FShandler *FirestoreHandler) addRegistration(writer http.ResponseWriter, r
 }
 
 
-//validate if name and isocode can go through as required
-func countryValidation(country *structs.RegisterCountry, writer http.ResponseWriter) bool {
 
-	if country.Name == "" {
-		http.Error(writer, "Missing required field: name", http.StatusBadRequest)
-		return false
-	}
 
-	if country.IsoCode == "" {
-		http.Error(writer, "Missing required field: isoCode", http.StatusBadRequest)
-		return false
-	}
-
-	if len(country.IsoCode) != 2 {
-		http.Error(writer, "IsoCode must be two letter.", http.StatusBadRequest)
-		return false
-	}
-
-	return true
-}
-
+// GET function
 //retrive a specific document by id or all documents if no id i specified
 func (FShandler *FirestoreHandler) getRegistrations(writer http.ResponseWriter, request *http.Request) {
 	log.Printf("%s request recived", request.Method)
@@ -180,6 +179,7 @@ func retriveSingleRegistration(FShandler *FirestoreHandler,context context.Conte
 
 
 
+// DELETE function
 func (FShandler *FirestoreHandler) deleteRegistrations(writer http.ResponseWriter, request *http.Request) {
 	log.Printf("%s request recived", request.Method)
 
@@ -217,5 +217,51 @@ func (FShandler *FirestoreHandler) deleteRegistrations(writer http.ResponseWrite
 		log.Printf("Error deleting document %s: %v", registrationID, registrationErr)
 		http.Error(writer, "Error deleting document", http.StatusInternalServerError)
 		return
+	}
+}
+
+
+
+//PUT (Full replacment of the given id)
+func (FShandler *FirestoreHandler) putRegistaration(writer http.ResponseWriter, request *http.Request){
+	defer request.Body.Close()
+	log.Printf("%s request recived", request.Method)
+
+	if request.PathValue("id") == ""{
+		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	registrationID := request.PathValue("id")
+	context := request.Context()
+
+	var newRegistration structs.RegisterCountry
+
+
+	decoderError := json.NewDecoder(request.Body).Decode(&newRegistration)
+	if decoderError != nil {
+		http.Error(writer, "Invalid JSON payload", http.StatusBadRequest)
+		return
+	}
+
+	if registrationValidation(&newRegistration, writer) == true {
+		newRegistration.LastChange = time.Now()
+
+		_, err := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Set(context, newRegistration)
+		if err != nil {
+			log.Printf("Failed to update document %s: %v", registrationID, err)
+			http.Error(writer, "Failed to update document", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("Document %s fully replaced", registrationID)
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusOK)
+
+		_ = json.NewEncoder(writer).Encode(map[string]string{
+		"id":     registrationID,
+		"status": "updated",
+		})
+
 	}
 }
