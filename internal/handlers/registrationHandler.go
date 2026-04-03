@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
+const SUCCESSFUL_EXECUTION = "Request successfully executed"
 
 type RegistrationHandler struct {
 	service *services.RegistrationService
@@ -70,19 +71,19 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 		return
 	}
 
-	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
 	writer.WriteHeader(http.StatusCreated)
 
 	_ = json.NewEncoder(writer).Encode(map[string]string{
 		"id": registrationID,
 	})
-	log.Println("Request successfully executed")
+	log.Println(SUCCESSFUL_EXECUTION)
 }
 
 // Handles HTTP Get requests to retrive single or all registration/s.
 func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
-	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
 
 	if request.PathValue("id") == "" {
 		allRegistrations, retrivingErr := handler.service.GetAll(request.Context())
@@ -106,7 +107,7 @@ func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter,
 		_ = json.NewEncoder(writer).Encode(singleRegistration)
 		
 	}
-	log.Println("Request successfully executed")
+	log.Println(SUCCESSFUL_EXECUTION)
 }
 
 
@@ -133,7 +134,7 @@ func (handler *RegistrationHandler) deleteRegistrations(writer http.ResponseWrit
 			http.Error(writer,"Regisration doesnt exist" , http.StatusOK)
 		}
 	}
-	log.Println("Request successfully executed")
+	log.Println(SUCCESSFUL_EXECUTION)
 }
 
 
@@ -169,7 +170,7 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 		http.Error(writer, "Specify registration ID", http.StatusBadRequest)
 		return
 	}
-	log.Println("Request successfully executed")
+	log.Println(SUCCESSFUL_EXECUTION)
 }
 
 
@@ -201,7 +202,7 @@ func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter
 		"status": "patched",
 	})
 
-	log.Println("Request successfully executed")
+	log.Println(SUCCESSFUL_EXECUTION)
 }
 
 
@@ -228,5 +229,5 @@ func (handler *RegistrationHandler) headRegistrations(writer http.ResponseWriter
 		writer.Header().Set("Registration-Exists", "true")
 		writer.WriteHeader(http.StatusOK)
 	}
-	log.Println("Request successfully executed")
+	log.Println(SUCCESSFUL_EXECUTION)
 }
