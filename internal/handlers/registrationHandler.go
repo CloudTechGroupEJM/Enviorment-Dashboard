@@ -1,296 +1,187 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"envdash/internal/config"
-	"envdash/internal/store"
+	"envdash/internal/services"
 	"envdash/internal/structs"
-	"errors"
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
-	"time"
 
 	"cloud.google.com/go/firestore"
-	"google.golang.org/api/iterator"
 )
 
-type FirestoreHandler struct {
-	Client *firestore.Client
+
+type RegistrationHandler struct {
+	service *services.RegistrationService
 }
 
+// initlizing service, handler and
 func InitRegistration(router *http.ServeMux, client *firestore.Client) {
-
-	firestoreHandler := &FirestoreHandler{
-		Client: client,
+	service := services.NewRegistrationService(client)
+	handler := &RegistrationHandler{
+		service: service,
 	}
 
-	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH,
-		func(writer http.ResponseWriter, request *http.Request) {
-			firestoreHandler.handleRegistrations(writer, request)
-	})
-
-	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH+"{id}",
-		func(writer http.ResponseWriter, request *http.Request) {
-			firestoreHandler.handleRegistrations(writer, request)
-	})
+	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH, handler.handleRegistrations)
+	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH+"{id}", handler.handleRegistrations)
 }
 
-func (FShandler *FirestoreHandler) handleRegistrations(writer http.ResponseWriter, request *http.Request) {
+// request method to assignt diffrent purposes of requests.
+func (handler *RegistrationHandler) handleRegistrations(writer http.ResponseWriter, request *http.Request) {
+	log.Println("---------------------------------")
 	log.Printf("%s request recived", request.Method)
 	switch request.Method {
 	case http.MethodPost:
-		FShandler.addRegistration(writer, request)
+		handler.createRegistration(writer, request)
 	case http.MethodGet:
-		FShandler.getRegistrations(writer, request)
+		handler.getRegistrations(writer, request)
 	case http.MethodDelete:
-		FShandler.deleteRegistrations(writer, request)
+		handler.deleteRegistrations(writer, request)
 	case http.MethodPut:
-		FShandler.putRegistration(writer, request)
+		handler.putRegistration(writer, request)
 	case http.MethodPatch:
-		FShandler.patchRegistration(writer, request)
+		handler.patchRegistration(writer, request)
 	case http.MethodHead:
-		FShandler.headRegistrations(writer, request)
+		handler.headRegistrations(writer, request)
 	default:
 		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 }
 
-// validate if name and isocode can go through as required
-func registrationValidation(country *structs.RegisterCountry, writer http.ResponseWriter) bool {
-	if country.Name == "" {
-		http.Error(writer, "Missing required field: name", http.StatusBadRequest)
-		return false
-	}
-
-	if country.IsoCode == "" {
-		http.Error(writer, "Missing required field: isoCode", http.StatusBadRequest)
-		return false
-	}
-
-	if len(country.IsoCode) != 2 {
-		http.Error(writer, "IsoCode must be two letter.", http.StatusBadRequest)
-		return false
-	}
-
-	return true
-}
-
-
-
-// POST function
-func (FShandler *FirestoreHandler) addRegistration(writer http.ResponseWriter, request *http.Request) {
+// Handles HTTP POST requests to create a new country registration.
+func (handler *RegistrationHandler) createRegistration(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
-	var country structs.RegisterCountry
+	var registration structs.RegisterCountry
 
-
-	log.Println(country)
-
-	if decoderErr := json.NewDecoder(request.Body).Decode(&country); decoderErr != nil {
+	if decoderErr := json.NewDecoder(request.Body).Decode(&registration); decoderErr != nil {
 		http.Error(writer, "Invalid JSON payload", http.StatusBadRequest)
+		log.Println("Error recived when creating registration")
 		return
 	}
 
-	country.IsoCode = strings.ToUpper(strings.TrimSpace(country.IsoCode))
-
-	if registrationValidation(&country, writer) == true {
-
-		country.LastChange = time.Now()
-
-		context := request.Context()
-
-		generatedID, _, idError := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Add(context, country)
-		if idError != nil {
-			log.Printf("Failed to add registration: %v", idError)
-			http.Error(writer, "Failed to store registration", http.StatusInternalServerError)
-			return
-		}
-
-		log.Println("registration Created carries ID: " + generatedID.ID)
-
-		writer.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
-		writer.WriteHeader(http.StatusCreated)
-
-		_ = json.NewEncoder(writer).Encode(map[string]string{
-			"id": generatedID.ID,
-		})
-
-	} else {
-		log.Println("Some values doesnt match the matched struct.")
+	registrationID, creationErr := handler.service.Post(request.Context(), registration)
+	if creationErr != nil {
+		http.Error(writer, creationErr.Error(), http.StatusBadRequest)
+		log.Println("Error recived when creating registration")
 		return
 	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+
+	_ = json.NewEncoder(writer).Encode(map[string]string{
+		"id": registrationID,
+	})
+	log.Println("Request successfully executed")
 }
 
+// Handles HTTP Get requests to retrive single or all registration/s.
+func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter, request *http.Request) {
+	defer request.Body.Close()
+	writer.Header().Set("Content-Type", "application/json")
 
+	if request.PathValue("id") == "" {
+		allRegistrations, retrivingErr := handler.service.GetAll(request.Context())
 
-// GET function
-// retrive a specific registration by id or all documents if no id i specified
-func (FShandler *FirestoreHandler) getRegistrations(writer http.ResponseWriter, request *http.Request) {
-
-	registrationID := request.PathValue("id")
-
-	context := request.Context()
-
-	writer.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
-
-	if registrationID == "" {
-		retriveAllRegistrations(FShandler, context, writer)
-		return
-	}
-	retriveSingleRegistration(FShandler, context, registrationID, writer)
-}
-
-func retriveAllRegistrations(FShandler *FirestoreHandler, context context.Context, writer http.ResponseWriter) {
-	regstrationIterator := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Documents(context)
-	defer regstrationIterator.Stop()
-
-	var results []map[string]interface{}
-
-	for {
-		registration, registrationErr := regstrationIterator.Next()
-		log.Println(registration)
-		if errors.Is(registrationErr, iterator.Done) {
-			break
-		}
-		if registrationErr != nil {
-			log.Printf("Error iterating registrations: %v", registrationErr)
+		if retrivingErr != nil {
+			log.Printf("Error retriving registrations: %v", retrivingErr)
 			http.Error(writer, "Error retrieving data", http.StatusInternalServerError)
-			return
+			return	
 		}
 
-		results = append(results, registration.Data())
-	}
-
-	_ = json.NewEncoder(writer).Encode(results)
-}
-
-func retriveSingleRegistration(FShandler *FirestoreHandler, context context.Context, registrationID string, writer http.ResponseWriter) {
-	registration, registrationErr := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(context)
-	if registrationErr != nil {
-		log.Printf("Error retrieving registration %s: %v", registrationID, registrationErr)
-		http.Error(writer, "registration not found", http.StatusNotFound)
+		_ = json.NewEncoder(writer).Encode(allRegistrations)
 		return
+	} else {
+		singleRegistration, registrationErr := handler.service.GetByID(request.PathValue("id"), request.Context())
+
+		if registrationErr != nil{
+			log.Printf("Error retrieving registration %s: %v", request.PathValue("id"), registrationErr)
+			http.Error(writer, "registration not found", http.StatusNotFound)
+			return
+		}
+		_ = json.NewEncoder(writer).Encode(singleRegistration)
+		
 	}
-	_ = json.NewEncoder(writer).Encode(registration.Data())
+	log.Println("Request successfully executed")
 }
 
 
 
-// DELETE function
-func (FShandler *FirestoreHandler) deleteRegistrations(writer http.ResponseWriter, request *http.Request) {
-	registrationID := request.PathValue("id")
-	context := request.Context()
 
-	if registrationID == "" {
-		registrationIterator := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Documents(context)
 
-		defer registrationIterator.Stop()
-
-		for {
-			registration, registrationErr := registrationIterator.Next()
-			if !errors.Is(registrationErr, iterator.Done) {
-				if registrationErr != nil {
-					log.Printf("Error iterating documents: %v", registrationErr)
-					http.Error(writer, "Error deleting registration", http.StatusInternalServerError)
-					return
-				}
-
-				if _, err := registration.Ref.Delete(context); err != nil {
-					log.Printf("Error deleting registration: %v", err)
-					http.Error(writer, "Error deleting registration", http.StatusInternalServerError)
-					return
-				}
-			} else {
-				writer.WriteHeader(http.StatusNoContent)
-				return
-			}
+// Handles HTTP Delete requests to remove a specific regisration or all that are stores.
+func (handler *RegistrationHandler) deleteRegistrations(writer http.ResponseWriter, request *http.Request) {
+	defer request.Body.Close()
+	if request.PathValue("id") == "" {
+		deletionErr := handler.service.DeleteAll(request.Context())
+		if deletionErr != nil{
+			log.Printf("Error nothing to delete %s", deletionErr)
+			http.Error(writer, "Nothing to delete.", http.StatusNotFound)
+			return
+		} else{
+			http.Error(writer, "All registration deleted", http.StatusOK)
 		}
 	} else{
-		log.Println("whats here")
-
-		_, existantsError := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(context)
-		if existantsError != nil {
-    log.Printf("registration not found: %v", existantsError)
-    http.Error(writer, "registration not found", http.StatusNotFound)
-    return
-		}	
-		
-		_, registrationErr := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Delete(context)
-		if registrationErr != nil {
-			log.Printf("Error deleting registration %s: %v", registrationID, registrationErr)
-			http.Error(writer, "Error deleting registration", http.StatusInternalServerError)
-			return
-		}else{
-			log.Println("Registration deleted")
-			http.Error(writer, "Registration deleted", http.StatusOK)
-			return
+		if handler.service.DeleteByID(request.PathValue("id"), request.Context()) == true{
+			http.Error(writer,"Regisration has been deleted" , http.StatusOK)
+			log.Println("Regisration with id "+ request.PathValue("id") + " has been deleted")
+		} else{
+			http.Error(writer,"Regisration doesnt exist" , http.StatusOK)
 		}
 	}
+	log.Println("Request successfully executed")
 }
 
 
-
-// PUT (Full replacment of the given id)
-func (FShandler *FirestoreHandler) putRegistration(writer http.ResponseWriter, request *http.Request) {
+// Handles HTTP Put requests to replace existen registration.
+func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, request *http.Request){
 	defer request.Body.Close()
+	writer.Header().Set("Content-Type", "application/json")
 
-	if request.PathValue("id") != "" {	registrationID := request.PathValue("id")
-		context := request.Context()
-
-		var newRegistration structs.RegisterCountry
-
+	var newRegistration structs.RegisterCountry
+	if request.PathValue("id") != ""{
 		decoderError := json.NewDecoder(request.Body).Decode(&newRegistration)
 		if decoderError != nil {
 			http.Error(writer, "Invalid JSON payload", http.StatusBadRequest)
 			return
 		}
 
-		if registrationValidation(&newRegistration, writer) == true {
-			newRegistration.LastChange = time.Now()
+		registrationID, replaceRegistrationErr := handler.service.Put(&newRegistration, request.PathValue("id"), request.Context())
 
-			_, err := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Set(context, newRegistration)
-			if err != nil {
-				log.Printf("Failed to update registration %s: %v", registrationID, err)
-				http.Error(writer, "Failed to update registration", http.StatusInternalServerError)
-				return
-			}
+		if replaceRegistrationErr != nil{
+			log.Printf("registration doesnt exist: %s ", replaceRegistrationErr)
+			http.Error(writer, "Couldnt replace registration.", http.StatusBadRequest)
 
-			log.Printf("registration %s fully replaced", registrationID)
-			writer.Header().Set("Content-Type", "application/json")
+		}else{
+			log.Printf("registration %s fully replaced", replaceRegistrationErr)
 			writer.WriteHeader(http.StatusOK)
 
 			_ = json.NewEncoder(writer).Encode(map[string]string{
 				"id":     registrationID,
 				"status": "updated",
 			})
-
 		}
-
-	} else{
-		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
+	}else{
+		http.Error(writer, "Specify registration ID", http.StatusBadRequest)
 		return
 	}
-
-
+	log.Println("Request successfully executed")
 }
 
 
 
-//patch
-func (FShandler *FirestoreHandler) patchRegistration(writer http.ResponseWriter, request *http.Request){
+// Handles HTTP Patch requests to update information in the registration.
+func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter, request *http.Request){
 	defer request.Body.Close()
-
-	registrationID := request.PathValue("id")
-	context := request.Context()
-
-	if registrationID == "" {
+	writer.Header().Set("Content-Type", "application/json")
+	if request.PathValue("id") == "" {
+		log.Println("Need to specify a registration ID")
 		http.Error(writer, "Missing registration ID", http.StatusBadRequest)
-	
-	return
+		return
 	}
 
 	var dataUpdate map[string]interface{}
@@ -299,81 +190,43 @@ func (FShandler *FirestoreHandler) patchRegistration(writer http.ResponseWriter,
 		return
 	}
 
-	// Update only the provided fields
-	_, err := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Update(context, toUpdateFields(dataUpdate))
-	if err != nil {
-		log.Printf("Failed to patch registration %s: %v", registrationID, err)
-		http.Error(writer, "Failed to update registration", http.StatusInternalServerError)
+	patchErr := handler.service.Patch(request.PathValue("id"), request.Context(), &dataUpdate)
+	if patchErr != nil{
+		log.Println(patchErr)
+		http.Error(writer, "registration not found", http.StatusBadRequest)
 		return
 	}
-
-	log.Printf("Registration %s partially updated", registrationID)
-
-	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusOK)
-
 	_ = json.NewEncoder(writer).Encode(map[string]string{
-		"id":     registrationID,
+		"id":     request.PathValue("id"),
 		"status": "patched",
 	})
 
-}
-
-// Helper function to convert map to firestore updates
-func toUpdateFields(dataUpdate map[string]interface{}) []firestore.Update {
-	updates := make([]firestore.Update, 0)
-	for key, value := range dataUpdate {
-		updates = append(updates, firestore.Update{
-			Path:  key,
-			Value: value,
-		})
-	}
-	return updates
+	log.Println("Request successfully executed")
 }
 
 
-
-//Head
-func (FShandler *FirestoreHandler) headRegistrations(writer http.ResponseWriter, request *http.Request){
-
-	registrationID := request.PathValue("id")
-	context := request.Context()
-
-	if registrationID == ""{
-		retriveTotalRegistrations(writer, context, FShandler)
-	} else {
-		retriveOneRegistration(writer, context, FShandler, registrationID)
-	}
-	
-}
-
-func retriveTotalRegistrations(writer http.ResponseWriter, context context.Context, FShandler *FirestoreHandler){
-	registrationIterator := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Documents(context)
-	defer registrationIterator.Stop()
-
-	totalRegistrations := 0
-
-	for _, registrationErr := registrationIterator.Next(); 
-			!errors.Is(registrationErr, iterator.Done);
-			_, registrationErr = registrationIterator.Next(){
-			
-			if registrationErr != nil {
-				log.Printf("Error counting registrations: %v ", registrationErr)
+// Handles HTTP Head requests to retrive header information.
+func (handler *RegistrationHandler) headRegistrations(writer http.ResponseWriter, request *http.Request){
+	defer request.Body.Close()
+	if request.PathValue("id") == ""{
+		totalRegistations, totalErr := handler.service.HeadAllRegistrations(request.Context())
+		if totalErr != nil{
+				log.Printf("Error counting registrations: %v ", totalErr)
 				http.Error(writer, "Error retriving data", http.StatusInternalServerError)
-			}
-			totalRegistrations++
-	}
-
-	writer.Header().Set("Registration-Count", strconv.Itoa(totalRegistrations))
-}
-
-func retriveOneRegistration(writer http.ResponseWriter, context context.Context, FShandler *FirestoreHandler, registrationID string){
-		_, registrationErr := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(context)
+				return
+		}
+		http.Error(writer, "Retrived total registration", http.StatusOK)
+		writer.Header().Set("Registration-Count", strconv.Itoa(totalRegistations))
+	}else{
+		_, registrationErr := handler.service.HeadOneRegistration(request.PathValue("id"),request.Context())
 		if registrationErr != nil{
-			log.Printf("Error retrieving registration %s: %v", registrationID, registrationErr)
+			log.Printf("Error retrieving registration %s: %v", request.PathValue("id"), registrationErr)
 			http.Error(writer, "Registration not found", http.StatusNotFound)
 			return
 		}
+
 		writer.Header().Set("Registration-Exists", "true")
 		writer.WriteHeader(http.StatusOK)
+	}
+	log.Println("Request successfully executed")
 }
