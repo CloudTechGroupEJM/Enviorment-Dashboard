@@ -4,12 +4,9 @@ stages:
   - vet
   - test
   - build
-#  - docker #TODO: Uncomment when docker is set up
 
 variables:
   GO_MODULE: "envdash"
-  #DOCKER_IMAGE: "$CI_REGISTRY_IMAGE" #TODO: Uncomment when docker is set up
-  #DOCKER_TAG: "$CI_COMMIT_SHORT_SHA" #TODO: Uncomment when docker is set up
 
 # Cache Go modules between jobs
 cache:
