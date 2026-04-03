@@ -79,6 +79,8 @@ func registrationValidation(country *structs.RegisterCountry, writer http.Respon
 	return true
 }
 
+
+
 // POST function
 func (FShandler *FirestoreHandler) addRegistration(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
@@ -123,6 +125,8 @@ func (FShandler *FirestoreHandler) addRegistration(writer http.ResponseWriter, r
 	}
 }
 
+
+
 // GET function
 // retrive a specific registration by id or all documents if no id i specified
 func (FShandler *FirestoreHandler) getRegistrations(writer http.ResponseWriter, request *http.Request) {
@@ -137,7 +141,6 @@ func (FShandler *FirestoreHandler) getRegistrations(writer http.ResponseWriter, 
 		retriveAllRegistrations(FShandler, context, writer)
 		return
 	}
-
 	retriveSingleRegistration(FShandler, context, registrationID, writer)
 }
 
@@ -174,6 +177,8 @@ func retriveSingleRegistration(FShandler *FirestoreHandler, context context.Cont
 	}
 	_ = json.NewEncoder(writer).Encode(registration.Data())
 }
+
+
 
 // DELETE function
 func (FShandler *FirestoreHandler) deleteRegistrations(writer http.ResponseWriter, request *http.Request) {
@@ -227,6 +232,8 @@ func (FShandler *FirestoreHandler) deleteRegistrations(writer http.ResponseWrite
 	}
 }
 
+
+
 // PUT (Full replacment of the given id)
 func (FShandler *FirestoreHandler) putRegistration(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
@@ -272,6 +279,8 @@ func (FShandler *FirestoreHandler) putRegistration(writer http.ResponseWriter, r
 }
 
 
+
+//patch
 func (FShandler *FirestoreHandler) patchRegistration(writer http.ResponseWriter, request *http.Request){
 	defer request.Body.Close()
 
@@ -310,7 +319,6 @@ func (FShandler *FirestoreHandler) patchRegistration(writer http.ResponseWriter,
 
 }
 
-
 // Helper function to convert map to firestore updates
 func toUpdateFields(dataUpdate map[string]interface{}) []firestore.Update {
 	updates := make([]firestore.Update, 0)
@@ -324,33 +332,42 @@ func toUpdateFields(dataUpdate map[string]interface{}) []firestore.Update {
 }
 
 
+
+//Head
 func (FShandler *FirestoreHandler) headRegistrations(writer http.ResponseWriter, request *http.Request){
 
 	registrationID := request.PathValue("id")
 	context := request.Context()
 
 	if registrationID == ""{
-		registrationIterator := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Documents(context)
-		defer registrationIterator.Stop()
-
-		totalRegistrations := 0
-
-		
-		for _, registrationErr := registrationIterator.Next(); 
-				!errors.Is(registrationErr, iterator.Done);
-				_, registrationErr = registrationIterator.Next(){
-				
-				if registrationErr != nil {
-					log.Printf("Error counting registrations: %v ", registrationErr)
-					http.Error(writer, "Error retriving data", http.StatusInternalServerError)
-				}
-				totalRegistrations++
-		}
-
-		writer.Header().Set("Registration-Count", strconv.Itoa(totalRegistrations))
-
-
+		retriveTotalRegistrations(writer, context, FShandler)
 	} else {
+		retriveOneRegistration(writer, context, FShandler, registrationID)
+	}
+	
+}
+
+func retriveTotalRegistrations(writer http.ResponseWriter, context context.Context, FShandler *FirestoreHandler){
+	registrationIterator := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Documents(context)
+	defer registrationIterator.Stop()
+
+	totalRegistrations := 0
+
+	for _, registrationErr := registrationIterator.Next(); 
+			!errors.Is(registrationErr, iterator.Done);
+			_, registrationErr = registrationIterator.Next(){
+			
+			if registrationErr != nil {
+				log.Printf("Error counting registrations: %v ", registrationErr)
+				http.Error(writer, "Error retriving data", http.StatusInternalServerError)
+			}
+			totalRegistrations++
+	}
+
+	writer.Header().Set("Registration-Count", strconv.Itoa(totalRegistrations))
+}
+
+func retriveOneRegistration(writer http.ResponseWriter, context context.Context, FShandler *FirestoreHandler, registrationID string){
 		_, registrationErr := FShandler.Client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(context)
 		if registrationErr != nil{
 			log.Printf("Error retrieving registration %s: %v", registrationID, registrationErr)
@@ -359,6 +376,4 @@ func (FShandler *FirestoreHandler) headRegistrations(writer http.ResponseWriter,
 		}
 		writer.Header().Set("Registration-Exists", "true")
 		writer.WriteHeader(http.StatusOK)
-	}
-	
 }
