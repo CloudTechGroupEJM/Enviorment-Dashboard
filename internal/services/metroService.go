@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-// MetroInternal is the internal implementation of the currency service,
+// MetroInternal is the internal implementation of the metro service,
 // wrapping an HTTP client for metro-related operations.
 type MetroInternal struct {
 	client *client.MetroClient
