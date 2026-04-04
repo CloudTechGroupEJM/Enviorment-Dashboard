@@ -22,12 +22,12 @@ type DashboardResponse struct {
 type Features struct {
 	Temperature      string             `json:"temperature"`
 	Precipitation    string             `json:"precipitation"`
-	AirQuality       map[string]float64 `json:"airQuality"` // reused from AQ service
+	AirQuality       AqResponse         `json:"airQuality"`
 	Capital          string             `json:"capital"`
 	Coordinates      CoordinateDetails  `json:"coordinates"`
 	Population       int                `json:"population"`
 	Area             float64            `json:"area"`
-	TargetCurrencies map[string]float64 `json:"targetCurrencies"` // reused from Currency service
+	TargetCurrencies map[string]float64 `json:"targetCurrencies"`
 }
 
 type CoordinateDetails struct {
