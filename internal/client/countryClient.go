@@ -33,7 +33,7 @@ func NewCountryClient() *CountryClient {
 //   - error: an error if the HTTP request fails or if the response body cannot be decoded.
 func (cc *CountryClient) FetchCountryData(countryCode string) ([]structs.IncomingCountry, error) {
 
-	resp, err := http.Get(config.REST_COUNTRIES_API + config.PATH_REST_ALPHA + countryCode)
+	resp, err := cc.httpClient.Get(config.REST_COUNTRIES_API + config.PATH_REST_ALPHA + countryCode)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching country info: %w", err)
 	}

@@ -29,7 +29,7 @@ func NewMetroClient() *MetroClient {
 // Gets the raw weather data response from the metro API
 func (mc *MetroClient) FetchMetroData(lat float64, long float64) (*structs.MetroAPIIncoming, error) {
 
-	resp, err := http.Get(metroUrl(lat, long))
+	resp, err := mc.httpClient.Get(metroUrl(lat, long))
 	if err != nil {
 		return nil, fmt.Errorf("error metro info: %w", err)
 	}

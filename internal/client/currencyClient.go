@@ -29,7 +29,7 @@ func (cur *CurrencyClient) FetchExchangeRates(baseCur string) (*structs.Incoming
 
 	//gets the exchange rates for the input country
 	//returns an error if there is an error
-	res, err := http.Get(config.CURRENCIES_API + baseCur)
+	res, err := cur.httpClient.Get(config.CURRENCIES_API + baseCur)
 	if err != nil {
 		return nil, err
 	}
