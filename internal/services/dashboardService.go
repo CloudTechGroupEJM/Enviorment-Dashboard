@@ -12,7 +12,8 @@ type DashBoardInternal struct {
 	counSer  *country.CountryInternal
 	curSer   *CurrencyInternal
 	metroSer *MetroInternal
-	//aqSer
+	aqSer    *AQInternal
+	nomSer   *NomInternal
 }
 
 // NewDashboardService returns a new DashBoardInternal instance with a configured HTTP client.
@@ -21,7 +22,8 @@ func NewDashboardService() *DashBoardInternal {
 		counSer:  country.NewCountryService(),
 		curSer:   NewCurrencyService(),
 		metroSer: NewMetroService(),
-		//aqSer:    NewAqService,
+		aqSer:    NewAqService(),
+		nomSer:   NewNomService(),
 	}
 }
 
@@ -39,7 +41,13 @@ func (dashI *DashBoardInternal) GetDashboard(country string) (*structs.Dashboard
 		return nil, err
 	}
 
-	metroInfo, err := dashI.metroSer.GetMetro(countryInfo.Coordinates[0], countryInfo.Coordinates[1])
+	nomData, err := dashI.nomSer.GetCapitalCords(countryInfo.Capital[0])
+	if err != nil {
+		return nil, err
+	}
+
+	//uses capital, change to  countryInfo.Coordinates[0], countryInfo.Coordinates[1] for centroid
+	metroInfo, err := dashI.metroSer.GetMetro(nomData.Lat, nomData.Lon) //uses capital, change to
 	if err != nil {
 		log.Printf("Error getting metro info: %v", err)
 		return nil, err
@@ -63,7 +71,14 @@ func (dashI *DashBoardInternal) GetDashboard(country string) (*structs.Dashboard
 		return nil, nil
 	}
 
+	aq, errAq := dashI.aqSer.GetAQ(nomData.Lat, nomData.Lon)
+	if errAq != nil {
+		log.Printf("Error with AQ: %s", errAq)
+		return nil, errAq
+	}
+
 	//todo: add some logic to call on register
+	//note: we use redunant structs to keep logic clean
 	//ie Area: registration(id)
 	return &structs.DashboardResponse{
 		Country: countryInfo.Name.Common,
@@ -71,9 +86,9 @@ func (dashI *DashBoardInternal) GetDashboard(country string) (*structs.Dashboard
 		Features: structs.Features{
 			Temperature:   metroInfo.MeanTemperature,
 			Precipitation: metroInfo.MeanPrecipitation,
-			AirQuality:    nil,
+			AirQuality:    *aq, //use the aqRespose struct directly
 			Capital:       countryInfo.Capital[0],
-			Coordinates: structs.CoordinateDetails{
+			Coordinates: structs.CoordinateDetails{ //todo: decide on which to use nominatim (capital) or country (centroid)
 				Latitude:  countryInfo.Coordinates[0],
 				Longitude: countryInfo.Coordinates[1],
 			},
