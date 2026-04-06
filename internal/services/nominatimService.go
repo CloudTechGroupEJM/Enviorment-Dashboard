@@ -4,6 +4,7 @@ import (
 	"envdash/internal/client"
 	"envdash/internal/structs"
 	"fmt"
+	"math"
 	"strconv"
 )
 
@@ -41,5 +42,13 @@ func (ni *NomInternal) GetCapitalCords(capital string) (*structs.NomResponse, er
 		return nil, fmt.Errorf("failed to parse lon: %w", err)
 	}
 
-	return &structs.NomResponse{Lat: lat, Lon: lon}, nil
+	return &structs.NomResponse{
+			Lat: roundTwoDeci(lat),
+			Lon: roundTwoDeci(lon),
+		},
+		nil
+}
+
+func roundTwoDeci(value float64) float64 {
+	return math.Round(value*100) / 100
 }

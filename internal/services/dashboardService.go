@@ -89,8 +89,8 @@ func (dashI *DashBoardInternal) GetDashboard(country string) (*structs.Dashboard
 			AirQuality:    *aq, //use the aqRespose struct directly
 			Capital:       countryInfo.Capital[0],
 			Coordinates: structs.CoordinateDetails{ //todo: decide on which to use nominatim (capital) or country (centroid)
-				Latitude:  countryInfo.Coordinates[0],
-				Longitude: countryInfo.Coordinates[1],
+				Latitude:  nomData.Lat,
+				Longitude: nomData.Lon,
 			},
 			Population:       countryInfo.Population,
 			Area:             countryInfo.Area,
