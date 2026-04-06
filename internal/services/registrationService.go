@@ -68,29 +68,19 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 // Returns:
 //   - error: Validation error if any field is invalid, nil if all fields pass validation
 func validation(registration *structs.RegisterCountry) error {
-	var err error
+    var err error
 
-	if registration.Name, err = validateName(registration.Name); err != nil {
-		return err
-	}
-	if registration.IsoCode, err = validateIsoCode(registration.IsoCode, "isoCode", 2); err != nil {
-		return err
-	}
+    if registration.Name, err = validateName(registration.Name); err != nil {
+        return err
+    }
+    if registration.IsoCode, err = validateIsoCode(registration.IsoCode, "isoCode", 2); err != nil {
+        return err
+    }
 
-	currencies := make([]string, 0, len(registration.Features.TargetCurrencies))
-	for _, currency := range registration.Features.TargetCurrencies {
-		currency, err = validateIsoCode(currency, "currency", 3)
-		if err != nil {
-			return err
-		}
-		currencies = append(currencies, currency)
-	}
-	registration.Features.TargetCurrencies = currencies
-
-	if registration.Features.TargetCurrencies, err = validateTargetCurrencies(registration.Features.TargetCurrencies); err != nil {
-		return err
-	}
-	return nil
+    if registration.Features.TargetCurrencies, err = validateTargetCurrencies(registration.Features.TargetCurrencies); err != nil {
+        return err
+    }
+    return nil
 }
 
 
@@ -112,6 +102,7 @@ func validateTargetCurrencies(oldCurrencies []string) ([]string, error) {
 	}
 	return currencies, nil
 }
+
 
 // validateName validates and normalizes the name field.
 // Parameters:
@@ -243,15 +234,17 @@ func (service *RegistrationService) DeleteAll(ctx context.Context) error {
 //   - bool: true if registration was deleted successfully, false otherwise
 //   - error: Error indicating why deletion failed
 func (service *RegistrationService) DeleteByID(registrationID string, ctx context.Context) (bool, error) {
-	if service.registrationExists(registrationID, ctx) == nil {
-		_, deletionErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
-			Doc(registrationID).Delete(ctx)
-		if deletionErr != nil {
-			return false, deletionErr
-		}
-		return true, nil
-	}
-	return false, service.registrationExists(registrationID, ctx)
+    existsErr := service.registrationExists(registrationID, ctx)
+    if existsErr != nil {
+        return false, existsErr
+    }
+    
+    _, deletionErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
+        Doc(registrationID).Delete(ctx)
+    if deletionErr != nil {
+        return false, deletionErr
+    }
+    return true, nil
 }
 
 // registrationExists checks if a registration document exists by its ID.
