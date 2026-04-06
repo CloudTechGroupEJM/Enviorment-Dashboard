@@ -13,12 +13,13 @@ import (
 )
 
 const SUCCESSFUL_EXECUTION = "Request successfully executed"
+const INVALID_JSON = "Invalid JSON payload"
 
 type RegistrationHandler struct {
 	service *services.RegistrationService
 }
 
-// initlizing service, handler and
+// initlizing service, handler and endpoints
 func InitRegistration(router *http.ServeMux, client *firestore.Client) {
 	service := services.NewRegistrationService(client)
 	handler := &RegistrationHandler{
@@ -29,9 +30,8 @@ func InitRegistration(router *http.ServeMux, client *firestore.Client) {
 	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH+"{id}", handler.handleRegistrations)
 }
 
-// request method to assignt diffrent purposes of requests.
+// request method to assign different purposes of requests.
 func (handler *RegistrationHandler) handleRegistrations(writer http.ResponseWriter, request *http.Request) {
-	log.Println("---------------------------------")
 	log.Printf("%s request recived", request.Method)
 	switch request.Method {
 	case http.MethodPost:
@@ -59,15 +59,15 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 	var registration structs.RegisterCountry
 
 	if decoderErr := json.NewDecoder(request.Body).Decode(&registration); decoderErr != nil {
-		http.Error(writer, "Invalid JSON payload", http.StatusBadRequest)
-		log.Println("Error recived when creating registration")
+		http.Error(writer, INVALID_JSON, http.StatusBadRequest)
+		log.Println("Error when decoding registration")
 		return
 	}
 
 	registrationID, creationErr := handler.service.Post(request.Context(), registration)
 	if creationErr != nil {
 		http.Error(writer, creationErr.Error(), http.StatusBadRequest)
-		log.Println("Error recived when creating registration")
+		log.Println("Error when creating registration")
 		return
 	}
 
@@ -80,7 +80,7 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 	log.Println(SUCCESSFUL_EXECUTION)
 }
 
-// Handles HTTP Get requests to retrive single or all registration/s.
+// Handles HTTP Get requests to retrieve single or all registration/s.
 func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	writer.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
@@ -89,32 +89,30 @@ func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter,
 		allRegistrations, retrivingErr := handler.service.GetAll(request.Context())
 
 		if retrivingErr != nil {
-			log.Printf("Error retriving registrations: %v", retrivingErr)
+			log.Printf("Error retrieving registrations: %v", retrivingErr)
 			http.Error(writer, "Error retrieving data", http.StatusInternalServerError)
 			return	
 		}
 
 		_ = json.NewEncoder(writer).Encode(allRegistrations)
 		return
-	} else {
-		singleRegistration, registrationErr := handler.service.GetByID(request.PathValue("id"), request.Context())
-
-		if registrationErr != nil{
-			log.Printf("Error retrieving registration %s: %v", request.PathValue("id"), registrationErr)
-			http.Error(writer, "registration not found", http.StatusNotFound)
-			return
-		}
-		_ = json.NewEncoder(writer).Encode(singleRegistration)
-		
 	}
+
+	singleRegistration, registrationErr := handler.service.GetByID(request.PathValue("id"), request.Context())
+
+	if registrationErr != nil{
+		log.Printf("Error retrieving registration %s: %v", request.PathValue("id"), registrationErr)
+		http.Error(writer, "registration not found", http.StatusNotFound)
+		return
+	}
+	_ = json.NewEncoder(writer).Encode(singleRegistration)
+
 	log.Println(SUCCESSFUL_EXECUTION)
 }
 
 
 
-
-
-// Handles HTTP Delete requests to remove a specific regisration or all that are stores.
+// Handles HTTP Delete requests to remove a specific regisration or all that are stored.
 func (handler *RegistrationHandler) deleteRegistrations(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	if request.PathValue("id") == "" {
@@ -127,18 +125,18 @@ func (handler *RegistrationHandler) deleteRegistrations(writer http.ResponseWrit
 			http.Error(writer, "All registration deleted", http.StatusOK)
 		}
 	} else{
-		if handler.service.DeleteByID(request.PathValue("id"), request.Context()) == true{
-			http.Error(writer,"Regisration has been deleted" , http.StatusOK)
-			log.Println("Regisration with id "+ request.PathValue("id") + " has been deleted")
+		if handler.service.DeleteByID(request.PathValue("id"), request.Context()){
+			http.Error(writer,"registration has been deleted" , http.StatusOK)
+			log.Println("registration with id "+ request.PathValue("id") + " has been deleted")
 		} else{
-			http.Error(writer,"Regisration doesnt exist" , http.StatusOK)
+			http.Error(writer,"registration doesn't exist" , http.StatusNoContent)
 		}
 	}
 	log.Println(SUCCESSFUL_EXECUTION)
 }
 
 
-// Handles HTTP Put requests to replace existen registration.
+// Handles HTTP Put requests to replace existing registration.
 func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, request *http.Request){
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
@@ -147,15 +145,15 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 	if request.PathValue("id") != ""{
 		decoderError := json.NewDecoder(request.Body).Decode(&newRegistration)
 		if decoderError != nil {
-			http.Error(writer, "Invalid JSON payload", http.StatusBadRequest)
+			http.Error(writer, INVALID_JSON, http.StatusBadRequest)
 			return
 		}
 
 		registrationID, replaceRegistrationErr := handler.service.Put(&newRegistration, request.PathValue("id"), request.Context())
 
 		if replaceRegistrationErr != nil{
-			log.Printf("registration doesnt exist: %s ", replaceRegistrationErr)
-			http.Error(writer, "Couldnt replace registration.", http.StatusBadRequest)
+			log.Printf("registration doesn't exist: %s ", replaceRegistrationErr)
+			http.Error(writer, "Couldn't replace registration.", http.StatusBadRequest)
 
 		}else{
 			log.Printf("registration %s fully replaced", replaceRegistrationErr)
@@ -165,12 +163,12 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 				"id":     registrationID,
 				"status": "updated",
 			})
+			log.Println(SUCCESSFUL_EXECUTION)
 		}
 	}else{
 		http.Error(writer, "Specify registration ID", http.StatusBadRequest)
 		return
 	}
-	log.Println(SUCCESSFUL_EXECUTION)
 }
 
 
@@ -191,7 +189,7 @@ func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter
 		return
 	}
 
-	patchErr := handler.service.Patch(request.PathValue("id"), request.Context(), &dataUpdate)
+	patchErr := handler.service.Patch(request.PathValue("id"), request.Context(), dataUpdate)
 	if patchErr != nil{
 		log.Println(patchErr)
 		http.Error(writer, "registration not found", http.StatusBadRequest)
@@ -206,18 +204,18 @@ func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter
 }
 
 
-// Handles HTTP Head requests to retrive header information.
+// Handles HTTP Head requests to retrieve header information.
 func (handler *RegistrationHandler) headRegistrations(writer http.ResponseWriter, request *http.Request){
 	defer request.Body.Close()
 	if request.PathValue("id") == ""{
-		totalRegistations, totalErr := handler.service.HeadAllRegistrations(request.Context())
+		totalRegistrations, totalErr := handler.service.HeadAllRegistrations(request.Context())
 		if totalErr != nil{
 				log.Printf("Error counting registrations: %v ", totalErr)
-				http.Error(writer, "Error retriving data", http.StatusInternalServerError)
+				http.Error(writer, "Error retrieving data", http.StatusInternalServerError)
 				return
 		}
-		http.Error(writer, "Retrived total registration", http.StatusOK)
-		writer.Header().Set("Registration-Count", strconv.Itoa(totalRegistations))
+		writer.Header().Set("Registration-Count", strconv.Itoa(totalRegistrations))
+		http.Error(writer, "Retrieved total registration", http.StatusOK)
 	}else{
 		_, registrationErr := handler.service.HeadOneRegistration(request.PathValue("id"),request.Context())
 		if registrationErr != nil{

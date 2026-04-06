@@ -70,7 +70,7 @@ func TestValidationIsoCodeTrimmed(t *testing.T) {
 }
 
 func TestToUpdateFields(t *testing.T) {
-	dataUpdate := &map[string]any{
+	dataUpdate := map[string]any{
 		"Name":    "USA",
 		"IsoCode": "UsS",
 	}
