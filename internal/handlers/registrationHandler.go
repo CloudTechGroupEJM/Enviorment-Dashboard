@@ -158,7 +158,7 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 
 		if replaceRegistrationErr != nil {
 			log.Printf("registration doesn't exist: %s ", replaceRegistrationErr)
-			http.Error(writer, "Couldn't replace registration.", http.StatusBadRequest)
+			http.Error(writer, "Couldn't replace registration: " + replaceRegistrationErr.Error(), http.StatusBadRequest)
 			return
 		} else {
 			log.Printf("registration %s fully replaced", replaceRegistrationErr)
@@ -169,6 +169,7 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 				"status": "updated",
 			})
 			log.Println(SUCCESSFUL_EXECUTION)
+			return
 		}
 	}
 	http.Error(writer, "Specify registration ID", http.StatusBadRequest)
@@ -194,7 +195,7 @@ func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter
 	patchErr := handler.service.Patch(request.PathValue("id"), request.Context(), dataUpdate)
 	if patchErr != nil {
 		log.Println(patchErr)
-		http.Error(writer, "registration not found", http.StatusBadRequest)
+		http.Error(writer, patchErr.Error(), http.StatusBadRequest)
 		return
 	}
 	_ = json.NewEncoder(writer).Encode(map[string]string{
