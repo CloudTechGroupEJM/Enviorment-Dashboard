@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-
 	"cloud.google.com/go/firestore"
 )
 
@@ -67,7 +66,7 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 	registrationID, creationErr := handler.service.Post(request.Context(), registration)
 	if creationErr != nil {
 		http.Error(writer, creationErr.Error(), http.StatusBadRequest)
-		log.Println("Error when creating registration")
+		log.Println("Error when creating registration: " + creationErr.Error())
 		return
 	}
 
@@ -76,6 +75,7 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 
 	_ = json.NewEncoder(writer).Encode(map[string]string{
 		"id": registrationID,
+		"lastChange" : registration.LastChange.String(),
 	})
 	log.Println(SUCCESSFUL_EXECUTION)
 }
@@ -91,7 +91,7 @@ func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter,
 		if retrivingErr != nil {
 			log.Printf("Error retrieving registrations: %v", retrivingErr)
 			http.Error(writer, "Error retrieving data", http.StatusInternalServerError)
-			return	
+			return
 		}
 
 		_ = json.NewEncoder(writer).Encode(allRegistrations)
@@ -100,7 +100,7 @@ func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter,
 
 	singleRegistration, registrationErr := handler.service.GetByID(request.PathValue("id"), request.Context())
 
-	if registrationErr != nil{
+	if registrationErr != nil {
 		log.Printf("Error retrieving registration %s: %v", request.PathValue("id"), registrationErr)
 		http.Error(writer, "registration not found", http.StatusNotFound)
 		return
@@ -110,39 +110,44 @@ func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter,
 	log.Println(SUCCESSFUL_EXECUTION)
 }
 
-
-
-// Handles HTTP Delete requests to remove a specific regisration or all that are stored.
+// Handles HTTP Delete requests to remove a specific registration or all that are stored.
 func (handler *RegistrationHandler) deleteRegistrations(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	if request.PathValue("id") == "" {
 		deletionErr := handler.service.DeleteAll(request.Context())
-		if deletionErr != nil{
+		if deletionErr != nil {
 			log.Printf("Error nothing to delete %s", deletionErr)
 			http.Error(writer, "Nothing to delete.", http.StatusNotFound)
 			return
-		} else{
+		} else {
 			http.Error(writer, "All registration deleted", http.StatusOK)
 		}
-	} else{
-		if handler.service.DeleteByID(request.PathValue("id"), request.Context()){
-			http.Error(writer,"registration has been deleted" , http.StatusOK)
-			log.Println("registration with id "+ request.PathValue("id") + " has been deleted")
-		} else{
-			http.Error(writer,"registration doesn't exist" , http.StatusNoContent)
+	} else {
+		deleted, deletionErr := handler.service.DeleteByID(request.PathValue("id"), request.Context())
+		if deletionErr != nil {
+			http.Error(writer, "Error when trying to delete.", http.StatusOK)
+			log.Println("Deletion error when deleting by ID")
+			return
+		}
+		if deleted {
+			http.Error(writer, "registration has been deleted", http.StatusOK)
+			log.Println("registration with id " + request.PathValue("id") + " has been deleted")
+		} else {
+			http.Error(writer, "Error registration doesn't exist", http.StatusNoContent)
+			log.Println("Registration: " + request.PathValue("id") + " doesnt exist")
+			return
 		}
 	}
 	log.Println(SUCCESSFUL_EXECUTION)
 }
 
-
 // Handles HTTP Put requests to replace existing registration.
-func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, request *http.Request){
+func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
 
 	var newRegistration structs.RegisterCountry
-	if request.PathValue("id") != ""{
+	if request.PathValue("id") != "" {
 		decoderError := json.NewDecoder(request.Body).Decode(&newRegistration)
 		if decoderError != nil {
 			http.Error(writer, INVALID_JSON, http.StatusBadRequest)
@@ -151,11 +156,11 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 
 		registrationID, replaceRegistrationErr := handler.service.Put(&newRegistration, request.PathValue("id"), request.Context())
 
-		if replaceRegistrationErr != nil{
+		if replaceRegistrationErr != nil {
 			log.Printf("registration doesn't exist: %s ", replaceRegistrationErr)
 			http.Error(writer, "Couldn't replace registration.", http.StatusBadRequest)
-
-		}else{
+			return
+		} else {
 			log.Printf("registration %s fully replaced", replaceRegistrationErr)
 			writer.WriteHeader(http.StatusOK)
 
@@ -165,16 +170,13 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 			})
 			log.Println(SUCCESSFUL_EXECUTION)
 		}
-	}else{
-		http.Error(writer, "Specify registration ID", http.StatusBadRequest)
-		return
 	}
+	http.Error(writer, "Specify registration ID", http.StatusBadRequest)
+	log.Println("No registration ID provided.")
 }
 
-
-
 // Handles HTTP Patch requests to update information in the registration.
-func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter, request *http.Request){
+func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
 	if request.PathValue("id") == "" {
@@ -184,13 +186,13 @@ func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter
 	}
 
 	var dataUpdate map[string]interface{}
-	if decoderErr := json.NewDecoder(request.Body).Decode(&dataUpdate); decoderErr != nil{
+	if decoderErr := json.NewDecoder(request.Body).Decode(&dataUpdate); decoderErr != nil {
 		http.Error(writer, "Invalid JSON payload", http.StatusBadRequest)
 		return
 	}
 
 	patchErr := handler.service.Patch(request.PathValue("id"), request.Context(), dataUpdate)
-	if patchErr != nil{
+	if patchErr != nil {
 		log.Println(patchErr)
 		http.Error(writer, "registration not found", http.StatusBadRequest)
 		return
@@ -203,22 +205,21 @@ func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter
 	log.Println(SUCCESSFUL_EXECUTION)
 }
 
-
 // Handles HTTP Head requests to retrieve header information.
-func (handler *RegistrationHandler) headRegistrations(writer http.ResponseWriter, request *http.Request){
+func (handler *RegistrationHandler) headRegistrations(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
-	if request.PathValue("id") == ""{
+	if request.PathValue("id") == "" {
 		totalRegistrations, totalErr := handler.service.HeadAllRegistrations(request.Context())
-		if totalErr != nil{
-				log.Printf("Error counting registrations: %v ", totalErr)
-				http.Error(writer, "Error retrieving data", http.StatusInternalServerError)
-				return
+		if totalErr != nil {
+			log.Printf("Error counting registrations: %v ", totalErr)
+			http.Error(writer, "Error retrieving data", http.StatusInternalServerError)
+			return
 		}
 		writer.Header().Set("Registration-Count", strconv.Itoa(totalRegistrations))
 		http.Error(writer, "Retrieved total registration", http.StatusOK)
-	}else{
-		_, registrationErr := handler.service.HeadOneRegistration(request.PathValue("id"),request.Context())
-		if registrationErr != nil{
+	} else {
+		_, registrationErr := handler.service.HeadOneRegistration(request.PathValue("id"), request.Context())
+		if registrationErr != nil {
 			log.Printf("Error retrieving registration %s: %v", request.PathValue("id"), registrationErr)
 			http.Error(writer, "Registration not found", http.StatusNotFound)
 			return
