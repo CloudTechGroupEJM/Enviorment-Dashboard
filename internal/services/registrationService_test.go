@@ -74,7 +74,7 @@ func TestToUpdateFields(t *testing.T) {
 		"Name":    "USA",
 		"IsoCode": "UsS",
 	}
-	updates := toUpdateFields(dataUpdate)
+	updates, _ := toUpdateFields(dataUpdate)
 	assert.Len(t, updates, 2)
 	assert.Equal(t, "Name", updates[0].Path)
 	assert.Equal(t, "USA", updates[0].Value)

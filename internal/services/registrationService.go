@@ -5,8 +5,10 @@ import (
 	"envdash/internal/store"
 	"envdash/internal/structs"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	"cloud.google.com/go/firestore"
 )
@@ -40,33 +42,74 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 	if isoExists {
 		return "", errors.New("isoCode already exists in registration collection")
 	}
-  	
-  registrationDoc := service.client.Collection(store.REGISTRATIONCOLLECTION).NewDoc()
-  registration.ID = registrationDoc.ID
 
-  _, creationError := registrationDoc.Set(ctx, registration)
-  if creationError != nil {
-    return "", creationError
-  }
-  return registrationDoc.ID, nil
+	registrationDoc := service.client.Collection(store.REGISTRATIONCOLLECTION).NewDoc()
+	registration.ID = registrationDoc.ID
+
+	_, creationError := registrationDoc.Set(ctx, registration)
+	if creationError != nil {
+		return "", creationError
+	}
+	return registrationDoc.ID, nil
 }
 
-// validation checks that required fields (Name and IsoCode) are present and valid.
+// validation validates and normalizes a RegisterCountry payload (name, ISO code, and target currencies), returning an error on the first invalid field.
 func validation(registration *structs.RegisterCountry) error {
-	if registration.Name == "" {
-		return errors.New("missing required field: name")
+	var err error
+
+	if registration.Name, err = validateName(registration.Name); err != nil {
+		return err
+	}
+	if registration.IsoCode, err = validateIsoCode(registration.IsoCode, "isoCode", 2); err != nil {
+		return err
 	}
 
-	if registration.IsoCode == "" {
-		return errors.New("missing required field: isoCode")
+	currencies := make([]string, 0, len(registration.Features.TargetCurrencies))
+	for _, currency := range registration.Features.TargetCurrencies {
+		currency, err = validateIsoCode(currency, "currency", 3)
+		if err != nil {
+			return err
+		}
+		currencies = append(currencies, currency)
 	}
-
-	registration.IsoCode = strings.ToUpper(strings.TrimSpace(registration.IsoCode))
-	if len(registration.IsoCode) != 2 {
-		return errors.New("isoCode must be two letters")
-	}
+	registration.Features.TargetCurrencies = currencies
 
 	return nil
+}
+
+// validateName trims and validates the name field, returning an error if it is empty or contains non-letter characters.
+func validateName(name string) (string, error) {
+	name, nameErr := validString(name, "name")
+	if nameErr != nil {
+		return "", nameErr
+	}
+	return name, nil
+}
+
+// validateIsoCode trims, validates alphabetic content and exact length, then returns the ISO code in uppercase.
+func validateIsoCode(value, field string, length int) (string, error) {
+	isoCode, isoCodeErr := validString(value, field)
+	if isoCodeErr != nil {
+		return "", isoCodeErr
+	}
+	if len(isoCode) != length {
+		return "", fmt.Errorf("%s must be %d letters", field, length)
+	}
+	return strings.ToUpper(isoCode), nil
+}
+
+// validString removes whitespace and validates that the field is non-empty and contains letters only.
+func validString(input, field string) (string, error) {
+  input = strings.Join(strings.Fields(input), "")
+	if input == "" {
+		return "", errors.New("missing required field: " + field)
+	}
+	for _, letter := range input {
+		if !unicode.IsLetter(letter) {
+			return "", errors.New(field + " must contain letters only")
+		}
+	}
+	return input, nil
 }
 
 // GetAll retrieves all registrations from the Firestore collection.
@@ -101,7 +144,7 @@ func (service *RegistrationService) GetByID(registrationID string, ctx context.C
 // DeleteAll removes all documents from the registrations collection using BulkWriter.
 func (service *RegistrationService) DeleteAll(ctx context.Context) error {
 	registrations, registrationsErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
-                                      Documents(ctx).GetAll()
+		Documents(ctx).GetAll()
 	if registrationsErr != nil {
 		return registrationsErr
 	}
@@ -125,7 +168,7 @@ func (service *RegistrationService) DeleteAll(ctx context.Context) error {
 func (service *RegistrationService) DeleteByID(registrationID string, ctx context.Context) (bool, error) {
 	if service.registrationExists(registrationID, ctx) == nil {
 		_, deletionErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
-                      Doc(registrationID).Delete(ctx)
+			Doc(registrationID).Delete(ctx)
 		if deletionErr != nil {
 			return false, deletionErr
 		}
@@ -137,7 +180,7 @@ func (service *RegistrationService) DeleteByID(registrationID string, ctx contex
 // registrationExists checks if a registration document exists by its ID.
 func (service *RegistrationService) registrationExists(registrationID string, ctx context.Context) error {
 	_, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
-                        Doc(registrationID).Get(ctx)
+		Doc(registrationID).Get(ctx)
 	if registrationErr != nil {
 		return registrationErr
 	}
@@ -152,7 +195,7 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 	}
 	newRegistration.LastChange = time.Now()
 	_, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
-                        Doc(registrationID).Set(ctx, newRegistration)
+		Doc(registrationID).Set(ctx, newRegistration)
 	if registrationErr != nil {
 		return "", registrationErr
 	}
@@ -160,42 +203,54 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 }
 
 // Patch updates only specified fields of a registration document.
-func (service *RegistrationService) Patch(registrationID string, ctx context.Context, 
-                                          dataUpdate map[string]interface{}) error {
-	exists := service.registrationExists(registrationID, ctx)
-	if exists != nil {
-		return exists
-	}
+func (service *RegistrationService) Patch(registrationID string, ctx context.Context,
+  dataUpdate map[string]interface{}) error {
+  exists := service.registrationExists(registrationID, ctx)
+  if exists != nil {
+      return exists
+  }
+
+  // Validate only fields that are provided in the patch payload.
+  // if err := validatePatchData(dataUpdate); err != nil {
+  //     return err
+  // }
 
   registration := service.client.Collection(store.REGISTRATIONCOLLECTION).
-                  Doc(registrationID)
+                   Doc(registrationID)
 
   dataUpdate["lastChange"] = time.Now()
 
-  _ , updateErr := registration.Update(ctx, toUpdateFields(dataUpdate))
-  	if updateErr != nil {
-		return updateErr
-	}
+  updates, fieldsErr := toUpdateFields(dataUpdate)
+  if fieldsErr != nil {
+    return fieldsErr
+  }
 
-	return nil
+  _, updateErr := registration.Update(ctx, updates)
+  if updateErr != nil {
+    return updateErr
+  }
+
+  return nil
 }
 
 // toUpdateFields converts a map to Firestore Update objects for partial updates.
-func toUpdateFields(dataUpdate map[string]interface{}) []firestore.Update {
-	updates := make([]firestore.Update, 0)
+func toUpdateFields(dataUpdate map[string]interface{}) ([]firestore.Update, error) {
+	updates := make([]firestore.Update, 0, len(dataUpdate))
+
 	for key, value := range dataUpdate {
 		updates = append(updates, firestore.Update{
 			Path:  key,
 			Value: value,
 		})
 	}
-	return updates
+
+	return updates, nil
 }
 
 // HeadAllRegistrations returns the total count of all registrations in the collection.
 func (service *RegistrationService) HeadAllRegistrations(ctx context.Context) (int, error) {
 	totalRegistrations, err := service.client.Collection(store.REGISTRATIONCOLLECTION).
-                            Documents(ctx).GetAll()
+		Documents(ctx).GetAll()
 	if err != nil {
 		return 0, err
 	}
@@ -203,8 +258,8 @@ func (service *RegistrationService) HeadAllRegistrations(ctx context.Context) (i
 }
 
 // HeadOneRegistration retrieves a single registration without modifying it.
-func (service *RegistrationService) HeadOneRegistration(registrationID string, 
-                                    ctx context.Context) (map[string]interface{}, error) {
+func (service *RegistrationService) HeadOneRegistration(registrationID string,
+	ctx context.Context) (map[string]interface{}, error) {
 	registration, registrationErr := service.GetByID(registrationID, ctx)
 	if registrationErr != nil {
 		return nil, registrationErr
@@ -212,9 +267,9 @@ func (service *RegistrationService) HeadOneRegistration(registrationID string,
 	return registration, nil
 }
 
+// Check if the isoCode is already in database.
 func (service *RegistrationService) isoCodeExists(ctx context.Context, isoCode string) (bool, error) {
 	normalizedIsoCode := strings.ToUpper(strings.TrimSpace(isoCode))
-
 	registration, registrationErr := service.client.
 		Collection(store.REGISTRATIONCOLLECTION).
 		Where("IsoCode", "==", normalizedIsoCode).
