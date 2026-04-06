@@ -187,7 +187,7 @@ func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter
 
 	var dataUpdate map[string]interface{}
 	if decoderErr := json.NewDecoder(request.Body).Decode(&dataUpdate); decoderErr != nil {
-		http.Error(writer, "Invalid JSON payload", http.StatusBadRequest)
+		http.Error(writer, INVALID_JSON, http.StatusBadRequest)
 		return
 	}
 

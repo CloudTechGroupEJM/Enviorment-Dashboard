@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 	"unicode"
-
 	"cloud.google.com/go/firestore"
 )
 
@@ -189,10 +188,13 @@ func (service *RegistrationService) registrationExists(registrationID string, ct
 
 // Put replaces an entire registration document with new data if it exists.
 func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry, registrationID string, ctx context.Context) (string, error) {
-	exists := service.registrationExists(registrationID, ctx)
+  exists := service.registrationExists(registrationID, ctx)
 	if exists != nil {
-		return "", exists
+    return "", exists
 	}
+  if validationErr := validation(newRegistration); validationErr != nil {
+    return "", validationErr
+  }
 	newRegistration.LastChange = time.Now()
 	_, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID).Set(ctx, newRegistration)
