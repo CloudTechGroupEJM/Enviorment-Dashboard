@@ -40,13 +40,15 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 	if isoExists {
 		return "", errors.New("isoCode already exists in registration collection")
 	}
-	registrationDoc, _, creationError := service.client.Collection(store.REGISTRATIONCOLLECTION).Add(ctx, registration)
-
-	if creationError != nil {
-		return "", creationError
-	}
+  	
+  registrationDoc := service.client.Collection(store.REGISTRATIONCOLLECTION).NewDoc()
   registration.ID = registrationDoc.ID
-	return registrationDoc.ID, nil
+
+  _, creationError := registrationDoc.Set(ctx, registration)
+  if creationError != nil {
+    return "", creationError
+  }
+  return registrationDoc.ID, nil
 }
 
 // validation checks that required fields (Name and IsoCode) are present and valid.
