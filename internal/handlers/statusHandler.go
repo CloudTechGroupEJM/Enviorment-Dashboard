@@ -33,8 +33,8 @@ func statusHandler(service *status.StatusInternal) http.HandlerFunc {
 		}
 
 		//go to service layer to get status
-		status := service.GetStatus()
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(status)
+		statusEndpoints := service.GetStatus()
+		w.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
+		json.NewEncoder(w).Encode(statusEndpoints)
 	}
 }

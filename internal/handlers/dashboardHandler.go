@@ -37,7 +37,7 @@ func dashboardhandler(service *services.DashBoardInternal) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
 		json.NewEncoder(w).Encode(dashboard)
 	}
 }
