@@ -260,7 +260,6 @@ func toUpdateFields(dataUpdate map[string]any) ([]firestore.Update, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		updates = append(updates, firestore.Update{
 			Path:  key,
 			Value: validatedVal,

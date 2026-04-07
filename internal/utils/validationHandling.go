@@ -8,6 +8,9 @@ import (
 	"unicode"
 )
 
+
+// ======================== Registration Validations ========================
+
 // Validation validates and normalizes a complete RegisterCountry payload.
 // Parameters:
 //   - registration: Pointer to RegisterCountry struct to validate (fields will be modified in place)
@@ -16,14 +19,14 @@ import (
 func Validation(registration *structs.RegisterCountry) error {
     var err error
 
-    if registration.Name, err = ValidateName(registration.Name); err != nil {
+    if registration.Name, err = validateName(registration.Name); err != nil {
         return err
     }
-    if registration.IsoCode, err = ValidateIsoCode(registration.IsoCode, "isoCode", 2); err != nil {
+    if registration.IsoCode, err = validateIsoCode(registration.IsoCode, "isoCode", 2); err != nil {
         return err
     }
 
-    if registration.Features.TargetCurrencies, err = ValidateTargetCurrencies(registration.Features.TargetCurrencies); err != nil {
+    if registration.Features.TargetCurrencies, err = validateTargetCurrencies(registration.Features.TargetCurrencies); err != nil {
         return err
     }
     return nil
@@ -37,8 +40,8 @@ func Validation(registration *structs.RegisterCountry) error {
 // Returns:
 //   - string: Trimmed with first letter as upper
 //   - error: Error if name is empty or contains non-letter characters
-func ValidateName(name string) (string, error) {
-	name, nameErr := ValidString(name, "name")
+func validateName(name string) (string, error) {
+	name, nameErr := validString(name, "name")
 	if nameErr != nil {
 		return "", nameErr
 	}
@@ -53,8 +56,8 @@ func ValidateName(name string) (string, error) {
 // Returns:
 //   - string: Normalized ISO code in uppercase on success
 //   - error: Error if code is invalid, wrong length, or contains non-letter characters
-func ValidateIsoCode(value, field string, length int) (string, error) {
-	isoCode, isoCodeErr := ValidString(value, field)
+func validateIsoCode(value, field string, length int) (string, error) {
+	isoCode, isoCodeErr := validString(value, field)
 	if isoCodeErr != nil {
 		return "", isoCodeErr
 	}
@@ -71,7 +74,7 @@ func ValidateIsoCode(value, field string, length int) (string, error) {
 // Returns:
 //   - string: Trimmed and validated string on success
 //   - error: Error if string is empty after trimming or contains non-letter characters
-func ValidString(input, field string) (string, error) {
+func validString(input, field string) (string, error) {
 	input = strings.Join(strings.Fields(input), "")
 	if input == "" {
 		return "", errors.New("missing required field: " + field)
@@ -92,11 +95,11 @@ func ValidString(input, field string) (string, error) {
 // Returns:
 //   - []string: Normalized currency codes in uppercase on success
 //   - error: Validation error if any currency code is invalid
-func ValidateTargetCurrencies(oldCurrencies []string) ([]string, error) {
+func validateTargetCurrencies(oldCurrencies []string) ([]string, error) {
 	currencies := make([]string, 0, len(oldCurrencies))
 	for _, currency := range oldCurrencies {
 		var curErr error
-		currency, curErr = ValidateIsoCode(currency, "currency", 3)
+		currency, curErr = validateIsoCode(currency, "currency", 3)
 		if curErr != nil {
 			return nil, curErr
 		}
@@ -117,16 +120,18 @@ func ValidateFieldValue(key string, value any) (any, error) {
 	switch key {
 	case "name":
 		if strVal, ok := value.(string); ok {
-			return ValidateName(strVal)
+			return validateName(strVal)
 		}
 	case "isoCode":
 		if strVal, ok := value.(string); ok {
-			return ValidateIsoCode(strVal, "isoCode", 2)
+			return validateIsoCode(strVal, "isoCode", 2)
 		}
 	case "targetCurrencies":
 		if currencySlice, ok := value.([]string); ok {
-			return ValidateTargetCurrencies(currencySlice)
+			return validateTargetCurrencies(currencySlice)
 		}
 	}
 	return value, nil
 }
+
+// ======================================================================
