@@ -2,6 +2,7 @@ package services
 
 import (
 	"envdash/internal/structs"
+	"envdash/internal/utils"
 	"testing"
 
 	"cloud.google.com/go/firestore"
@@ -22,60 +23,61 @@ func TestNewRegistrationServiceNilClient(t *testing.T) {
 }
 
 func TestValidationSuccess(t *testing.T) {
-	registration := &structs.RegisterCountry{
-		Name:    "Canada",
-		IsoCode: "ca",
-	}
-	err := validation(registration)
-	assert.NoError(t, err)
-	assert.Equal(t, "CA", registration.IsoCode) // Should be uppercase
+    registration := &structs.RegisterCountry{
+        Name:    "Canada",
+        IsoCode: "ca",
+    }
+    err := utils.Validation(registration)  // Changed from validation() to utils.Validation()
+    assert.NoError(t, err)
+    assert.Equal(t, "CA", registration.IsoCode)
 }
 
 func TestValidationMissingName(t *testing.T) {
-	registration := &structs.RegisterCountry{
-		IsoCode: "ca",
-	}
-	err := validation(registration)
-	assert.Error(t, err)
-	assert.Equal(t, "missing required field: name", err.Error())
+    registration := &structs.RegisterCountry{
+        IsoCode: "ca",
+    }
+    err := utils.Validation(registration)  // Changed
+    assert.Error(t, err)
+    assert.Equal(t, "missing required field: name", err.Error())
 }
 
 func TestValidationMissingIsoCode(t *testing.T) {
-	registration := &structs.RegisterCountry{
-		Name: "Canada",
-	}
-	err := validation(registration)
-	assert.Error(t, err)
-	assert.Equal(t, "missing required field: isoCode", err.Error())
+    registration := &structs.RegisterCountry{
+        Name: "Canada",
+    }
+    err := utils.Validation(registration)  // Changed
+    assert.Error(t, err)
+    assert.Equal(t, "missing required field: isoCode", err.Error())
 }
 
 func TestValidationInvalidIsoCodeLength(t *testing.T) {
-	registration := &structs.RegisterCountry{
-		Name:    "Canada",
-		IsoCode: "can",
-	}
-	err := validation(registration)
-	assert.Error(t, err)
-	assert.Equal(t, "isoCode must be two letters", err.Error())
+    registration := &structs.RegisterCountry{
+        Name:    "Canada",
+        IsoCode: "can",
+    }
+    err := utils.Validation(registration)  // Changed
+    assert.Error(t, err)
+    assert.Equal(t, "isoCode must be 2 letters", err.Error())  // Changed from "two" to "2"
 }
 
 func TestValidationIsoCodeTrimmed(t *testing.T) {
-	registration := &structs.RegisterCountry{
-		Name:    "Canada",
-		IsoCode: "  ca  ",
-	}
-	err := validation(registration)
-	assert.NoError(t, err)
-	assert.Equal(t, "CA", registration.IsoCode)
+    registration := &structs.RegisterCountry{
+        Name:    "Canada",
+        IsoCode: "  ca  ",
+    }
+    err := utils.Validation(registration)  // Changed
+    assert.NoError(t, err)
+    assert.Equal(t, "CA", registration.IsoCode)
 }
 
 func TestToUpdateFields(t *testing.T) {
-	dataUpdate := map[string]any{
-		"Name":    "USA",
-		"IsoCode": "UsS",
-	}
-	updates, _ := toUpdateFields(dataUpdate)
-	assert.Len(t, updates, 2)
-	assert.Equal(t, "Name", updates[0].Path)
-	assert.Equal(t, "USA", updates[0].Value)
+    dataUpdate := map[string]any{
+        "name":    "Usa",        // Valid name
+        "isoCode": "us",         // Valid 2-letter code
+    }
+    updates, err := toUpdateFields(dataUpdate)
+    assert.NoError(t, err)
+    assert.Len(t, updates, 2)
+    assert.Equal(t, "name", updates[0].Path)
+    assert.Equal(t, "Usa", updates[0].Value)  // Should be normalized by ValidateName
 }

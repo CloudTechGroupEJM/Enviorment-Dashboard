@@ -18,7 +18,8 @@ type RegistrationHandler struct {
 	service *services.RegistrationService
 }
 
-// initlizing service, handler and endpoints
+// InitRegistration initializes the registration service, handler and endpoints.
+// Parameters: router - HTTP router, client - Firestore client
 func InitRegistration(router *http.ServeMux, client *firestore.Client) {
 	service := services.NewRegistrationService(client)
 	handler := &RegistrationHandler{
@@ -29,7 +30,8 @@ func InitRegistration(router *http.ServeMux, client *firestore.Client) {
 	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH+"{id}", handler.handleRegistrations)
 }
 
-// request method to assign different purposes of requests.
+// handleRegistrations routes HTTP requests to appropriate handler methods based on request type.
+// Parameters: writer - HTTP response writer, request - HTTP request
 func (handler *RegistrationHandler) handleRegistrations(writer http.ResponseWriter, request *http.Request) {
 	log.Printf("%s request recived", request.Method)
 	switch request.Method {
@@ -51,7 +53,9 @@ func (handler *RegistrationHandler) handleRegistrations(writer http.ResponseWrit
 	}
 }
 
-// Handles HTTP POST requests to create a new country registration.
+// createRegistration handles HTTP POST requests to create a new country registration.
+// Parameters: writer - HTTP response writer, request - HTTP request with registration data
+// Returns: none (writes HTTP response)
 func (handler *RegistrationHandler) createRegistration(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
@@ -80,7 +84,9 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 	log.Println(SUCCESSFUL_EXECUTION)
 }
 
-// Handles HTTP Get requests to retrieve single or all registration/s.
+// getRegistrations handles HTTP GET requests to retrieve a single registration or all registrations.
+// Parameters: writer - HTTP response writer, request - HTTP request with optional registration ID
+// Returns: none (writes HTTP response with registration data)
 func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	writer.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
@@ -110,7 +116,9 @@ func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter,
 	log.Println(SUCCESSFUL_EXECUTION)
 }
 
-// Handles HTTP Delete requests to remove a specific registration or all that are stored.
+// deleteRegistrations handles HTTP DELETE requests to remove a specific registration or all registrations.
+// Parameters: writer - HTTP response writer, request - HTTP request with optional registration ID
+// Returns: none (writes HTTP response)
 func (handler *RegistrationHandler) deleteRegistrations(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	if request.PathValue("id") == "" {
@@ -141,7 +149,9 @@ func (handler *RegistrationHandler) deleteRegistrations(writer http.ResponseWrit
 	log.Println(SUCCESSFUL_EXECUTION)
 }
 
-// Handles HTTP Put requests to replace existing registration.
+// putRegistration handles HTTP PUT requests to replace an entire registration.
+// Parameters: writer - HTTP response writer, request - HTTP request with registration ID and new data
+// Returns: none (writes HTTP response)
 func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
@@ -176,7 +186,9 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 	log.Println("No registration ID provided.")
 }
 
-// Handles HTTP Patch requests to update information in the registration.
+// patchRegistration handles HTTP PATCH requests to update specific fields in a registration.
+// Parameters: writer - HTTP response writer, request - HTTP request with registration ID and partial data
+// Returns: none (writes HTTP response)
 func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	writer.Header().Set("Content-Type", "application/json")
@@ -206,7 +218,9 @@ func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter
 	log.Println(SUCCESSFUL_EXECUTION)
 }
 
-// Handles HTTP Head requests to retrieve header information.
+// headRegistrations handles HTTP HEAD requests to retrieve registration count or existence status.
+// Parameters: writer - HTTP response writer, request - HTTP request with optional registration ID
+// Returns: none (writes HTTP response headers)
 func (handler *RegistrationHandler) headRegistrations(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	if request.PathValue("id") == "" {
