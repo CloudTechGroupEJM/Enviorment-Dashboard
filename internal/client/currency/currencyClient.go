@@ -1,4 +1,4 @@
-package client
+package currency
 
 import (
 	"encoding/json"

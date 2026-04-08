@@ -1,12 +1,12 @@
 package country
 
 import (
-	"envdash/internal/client"
+	"envdash/internal/client/country"
 	"envdash/internal/structs"
 )
 
 type CountryInternal struct {
-	client *client.CountryClient
+	client *country.CountryClient
 }
 
 // NewCountryService
@@ -14,7 +14,7 @@ type CountryInternal struct {
 // Used to talk to other services
 func NewCountryService() *CountryInternal {
 	return &CountryInternal{
-		client: client.NewCountryClient(),
+		client: country.NewCountryClient(),
 	}
 }
 

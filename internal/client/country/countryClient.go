@@ -1,4 +1,4 @@
-package client
+package country
 
 import (
 	"encoding/json"

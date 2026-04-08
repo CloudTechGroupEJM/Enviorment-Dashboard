@@ -1,21 +1,21 @@
-package services
+package currency
 
 import (
-	"envdash/internal/client"
+	"envdash/internal/client/currency"
 	"envdash/internal/structs"
-	"errors"
+	"fmt"
 )
 
 // CurrencyInternal is the internal implementation of the currency service,
 // wrapping an HTTP client for currency-related operations.
 type CurrencyInternal struct {
-	client *client.CurrencyClient
+	client *currency.CurrencyClient
 }
 
 // NewCurrencyService returns a new CurrencyInternal instance with a configured HTTP client.
 func NewCurrencyService() *CurrencyInternal {
 	return &CurrencyInternal{
-		client: client.NewCurrencyClient(),
+		client: currency.NewCurrencyClient(),
 	}
 }
 
@@ -37,7 +37,7 @@ func (curI *CurrencyInternal) GetCurrency(currencyCode string, target []string) 
 	}
 
 	if allCur == nil || len(target) == 0 {
-		return nil, errors.New("no exchange rates available")
+		return nil, fmt.Errorf("no exchange rates available")
 	}
 
 	//Claude matching algorithm

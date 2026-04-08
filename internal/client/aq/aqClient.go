@@ -1,4 +1,4 @@
-package client
+package aq
 
 import (
 	"encoding/json"

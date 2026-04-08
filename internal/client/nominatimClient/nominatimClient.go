@@ -1,4 +1,4 @@
-package client
+package nominatimClient
 
 import (
 	"encoding/json"

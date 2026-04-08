@@ -1,7 +1,7 @@
-package services
+package openaq
 
 import (
-	"envdash/internal/client"
+	"envdash/internal/client/aq"
 	"envdash/internal/structs"
 	"log"
 	"math"
@@ -11,14 +11,14 @@ import (
 // The internal implementation of the aq service,
 // wrapping an HTTP client for air quality  calculation.
 type AQInternal struct {
-	client *client.AQClient
+	client *aq.AQClient
 }
 
 // NewAqService
 // returns a new AQInternal instance with a client
 func NewAqService() *AQInternal {
 	return &AQInternal{
-		client: client.NewAQClient(),
+		client: aq.NewAQClient(),
 	}
 }
 

@@ -3,23 +3,23 @@ package handlers
 import (
 	"encoding/json"
 	"envdash/internal/config"
-	"envdash/internal/services"
+	"envdash/internal/services/dashboard"
 	"net/http"
 )
 
 // todo: this is just a test
 // todo: fix to work with the configuration of dashboard
-var dashboardService *services.DashBoardInternal
+var dashboardService *dashboard.DashBoardInternal
 
 func init() {
-	dashboardService = services.NewDashboardService()
+	dashboardService = dashboard.NewDashboardService()
 }
 
 func DashbaordRouter(router *http.ServeMux) {
 	router.HandleFunc(config.DASHBOARDS_PAGE_PATH+"{p1}", dashboardhandler(dashboardService))
 }
 
-func dashboardhandler(service *services.DashBoardInternal) http.HandlerFunc {
+func dashboardhandler(service *dashboard.DashBoardInternal) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

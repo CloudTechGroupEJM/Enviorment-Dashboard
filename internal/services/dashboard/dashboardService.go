@@ -1,7 +1,11 @@
-package services
+package dashboard
 
 import (
 	"envdash/internal/services/country"
+	"envdash/internal/services/currency"
+	"envdash/internal/services/metro"
+	"envdash/internal/services/nominatim"
+	"envdash/internal/services/openaq"
 	"envdash/internal/structs"
 	"log"
 )
@@ -10,20 +14,20 @@ import (
 // wrapping all services used by the dashboard.
 type DashBoardInternal struct {
 	counSer  *country.CountryInternal
-	curSer   *CurrencyInternal
-	metroSer *MetroInternal
-	aqSer    *AQInternal
-	nomSer   *NomInternal
+	curSer   *currency.CurrencyInternal
+	metroSer *metro.MetroInternal
+	aqSer    *openaq.AQInternal
+	nomSer   *nominatim.NomInternal
 }
 
 // NewDashboardService returns a new DashBoardInternal instance with a configured HTTP client.
 func NewDashboardService() *DashBoardInternal {
 	return &DashBoardInternal{
 		counSer:  country.NewCountryService(),
-		curSer:   NewCurrencyService(),
-		metroSer: NewMetroService(),
-		aqSer:    NewAqService(),
-		nomSer:   NewNomService(),
+		curSer:   currency.NewCurrencyService(),
+		metroSer: metro.NewMetroService(),
+		aqSer:    openaq.NewAqService(),
+		nomSer:   nominatim.NewNomService(),
 	}
 }
 

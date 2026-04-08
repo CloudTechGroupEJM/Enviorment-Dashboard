@@ -1,4 +1,4 @@
-package client
+package metro
 
 import (
 	"encoding/json"
@@ -54,7 +54,7 @@ func metroUrl(lat float64, long float64) string {
 	q := urlCreated.Query()
 	q.Set("latitude", strconv.FormatFloat(lat, 'f', 4, 64))
 	q.Set("longitude", strconv.FormatFloat(long, 'f', 4, 64))
-	q.Set("daily", "temperature_2m_mean,precipitation_sum")
+	q.Set("daily", "temperature_2m_mean,precipitation_sum") // gets daily mean for 7 days
 	q.Set("temperature_unit", "celsius")
 	q.Set("forecast_days", "7")
 	q.Set("timezone", "UTC")

@@ -1,7 +1,7 @@
-package services
+package metro
 
 import (
-	"envdash/internal/client"
+	"envdash/internal/client/metro"
 	"envdash/internal/structs"
 	"fmt"
 )
@@ -9,13 +9,13 @@ import (
 // MetroInternal is the internal implementation of the metro service,
 // wrapping an HTTP client for metro-related operations.
 type MetroInternal struct {
-	client *client.MetroClient
+	client *metro.MetroClient
 }
 
 // NewMetroService returns a new MetroInternal instance with a configured HTTP client.
 func NewMetroService() *MetroInternal {
 	return &MetroInternal{
-		client: client.NewMetroClient(),
+		client: metro.NewMetroClient(),
 	}
 }
 
