@@ -77,11 +77,12 @@ func TestToUpdateFields(t *testing.T) {
 		"isoCode": "us",  // Valid 2-letter code
 	}
 	updates, err := toUpdateFields(dataUpdate)
-      // Sort by Path field alphabetically
+    assert.NoError(t, err)
+    
+    // Sort by Path field alphabetically
 	sort.Slice(updates, func(i, j int) bool {
 		return updates[i].Path < updates[j].Path
 	})
-	assert.NoError(t, err)
 	assert.Len(t, updates, 2)
 
 	assert.Equal(t, "name", updates[1].Path)
