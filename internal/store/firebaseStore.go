@@ -1,18 +1,18 @@
 package store
 
 import (
-	"cloud.google.com/go/firestore"
 	"context"
+	"log"
+
+	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
 	"google.golang.org/api/option"
-	"log"
 )
 
 // Firebase context and client used by Firestore functions throughout the program.
 var firebaseContext context.Context
 
-
-//Returns Firebase context and initializes if not already done.
+// Returns Firebase context and initializes if not already done.
 func GetFirebaseContext() context.Context {
 	if firebaseContext == nil {
 		firebaseContext = context.Background()
@@ -20,9 +20,8 @@ func GetFirebaseContext() context.Context {
 	return firebaseContext
 }
 
-
-//Initializes Firebase client and returns reference.
-//Returns error if problems during initialization occur.
+// Initializes Firebase client and returns reference.
+// Returns error if problems during initialization occur.
 func GetFirebaseClient() (*firestore.Client, error) {
 	// Firebase initialisation
 	firebaseContext = GetFirebaseContext()
@@ -30,7 +29,7 @@ func GetFirebaseClient() (*firestore.Client, error) {
 	// We use a service account, load credentials file that you downloaded from your project's settings menu.
 	// It should reside in your project directory.
 	// Make sure this file is git-ignored, since it is the access token to the database.
-	credentialsOption := option.WithCredentialsFile("../credentials/db.json")
+	credentialsOption := option.WithCredentialsFile(DB_CREDDENTIAL_PATH)
 	firebaseApp, firebaseAppInitError := firebase.NewApp(firebaseContext, nil, credentialsOption)
 	if firebaseAppInitError != nil {
 		log.Println(firebaseAppInitError)
@@ -51,6 +50,3 @@ func GetFirebaseClient() (*firestore.Client, error) {
 
 	return client, nil
 }
-
-
-
