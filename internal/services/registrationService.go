@@ -6,6 +6,7 @@ import (
 	"envdash/internal/structs"
 	"envdash/internal/utils"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -266,6 +267,10 @@ func toUpdateFields(dataUpdate map[string]any) ([]firestore.Update, error) {
 		})
 	}
 
+	// Sort by Path field alphabetically
+	sort.Slice(updates, func(current, next int) bool {
+		return updates[current].Path < updates[next].Path
+	})
 	return updates, nil
 }
 
