@@ -18,7 +18,7 @@ func NewStatusClient() *StatusClient {
 	}
 }
 
-// probeHeadEndPoint
+// ProbeHeadEndpoint
 // sends a head request to the endpoint to get the status code
 // only useful for endpoints that support it
 func (sc *StatusClient) ProbeHeadEndpoint(url string) (int, error) {

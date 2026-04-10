@@ -38,7 +38,7 @@ func (s *StatusInternal) GetStatus() *structs.StatusResponse {
 		AqAPI:        healthStatus["openaq"],
 		Nominatim:    healthStatus["nominatim"],
 		CurrencyAPI:  healthStatus["currency"],
-		Db_noti:      0,
+		Db_noti:      0, //todo implement status of the firestore instance
 		Version:      config.APPLICATION_VERSION,
 		Uptime:       fmt.Sprintf("%.f", time.Since(s.startTime).Seconds()),
 	}

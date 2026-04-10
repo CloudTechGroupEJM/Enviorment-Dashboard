@@ -37,6 +37,11 @@ func (mi *MetroInternal) GetMetro(lat float64, lon float64) (*structs.MetroRespo
 
 // processMetroData fetches incoming data and calculates the mean
 func (mi *MetroInternal) processMetroData(latitude float64, longitude float64) (float64, float64, error) {
+	validCoords := validateLatLong(latitude, longitude)
+	if validCoords != nil {
+		return 0, 0, validCoords
+	}
+
 	metroData, err := mi.client.FetchMetroData(latitude, longitude)
 	if err != nil {
 		return 0, 0, fmt.Errorf("error metro info: %w", err)
@@ -64,4 +69,16 @@ func calculateMean(values []float64) float64 {
 		sum += val
 	}
 	return sum / float64(len(values))
+}
+
+// validateLatLong
+// Validates that the latitude and longitude are acceptable values
+func validateLatLong(lat, long float64) error {
+	if lat < -90 || lat > 90 {
+		return fmt.Errorf("invalid latitude: must be between -90 and 90")
+	}
+	if long < -180 || long > 180 {
+		return fmt.Errorf("invalid longitude: must be between -180 and 180")
+	}
+	return nil
 }

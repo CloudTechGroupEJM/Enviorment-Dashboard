@@ -48,7 +48,6 @@ func (mc *MetroClient) FetchMetroData(lat float64, long float64) (*structs.Metro
 
 // metroUrl
 // Creates the URL for the metro api
-// todo: handle "wrong lat, long in the handler"
 func metroUrl(lat float64, long float64) string {
 	urlCreated, _ := url.Parse(config.METRO_API)
 	q := urlCreated.Query()

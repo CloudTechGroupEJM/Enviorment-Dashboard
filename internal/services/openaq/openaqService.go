@@ -60,7 +60,7 @@ func (aqI *AQInternal) GetAQ(lat, long float64) (*structs.AqResponse, error) {
 
 // aggregateAirQualityData fetches and aggregates PM2.5 and PM10 readings
 // from multiple sensor locations
-// claude
+// claude assisted
 func (aqI *AQInternal) aggregateAirQualityData(
 	locationIDs []int,
 	sensorParams map[int]string,
@@ -95,7 +95,7 @@ func (aqI *AQInternal) aggregateAirQualityData(
 
 // buildSensorMap
 // creates a sensor ID → parameter name mapping from locations
-// claude
+// claude assisted
 func buildSensorMap(locations *structs.AirQualityIncoming) map[int]string {
 	sensorParams := make(map[int]string)
 	for _, loc := range locations.Results {

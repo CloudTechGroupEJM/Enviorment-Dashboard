@@ -10,7 +10,7 @@ import (
 	"log"
 )
 
-// DashBoardInternal is the internal implementation of the dashbaord service,
+// DashBoardInternal is the internal implementation of the dashboard service,
 // wrapping all services used by the dashboard.
 type DashBoardInternal struct {
 	counSer  *country.CountryInternal

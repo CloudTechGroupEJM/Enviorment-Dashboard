@@ -16,5 +16,5 @@ func SetupAllHandlers(router *http.ServeMux) {
 	registrationsHandler(router)
 	notificationsHandler(router)
 	StatusRouter(router)
-	DashbaordRouter(router)
+	DashboardRouter(router)
 }
