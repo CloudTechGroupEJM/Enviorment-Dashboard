@@ -1,4 +1,4 @@
-package services
+package status
 
 import (
 	"testing"

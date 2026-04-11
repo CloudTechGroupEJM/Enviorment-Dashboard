@@ -1,4 +1,4 @@
-package services
+package country
 
 import (
 	"encoding/json"
@@ -6,7 +6,20 @@ import (
 	"envdash/internal/structs"
 	"fmt"
 	"net/http"
+	"time"
 )
+
+type CountryClient struct {
+	httpClient *http.Client
+}
+
+// NewCountryClient
+// Creates a status client to execute HTTP calls.
+func NewCountryClient() *CountryClient {
+	return &CountryClient{
+		httpClient: &http.Client{Timeout: 5 * time.Second},
+	}
+}
 
 // FetchCountryData retrieves country information from the external country API
 // for the given two-letter country code.
@@ -18,12 +31,17 @@ import (
 //   - []structs.IncomingCountry: a slice of country info structs populated with
 //     the API response data.
 //   - error: an error if the HTTP request fails or if the response body cannot be decoded.
-func FetchCountryData(countryCode string) ([]structs.IncomingCountry, error) {
-	resp, err := http.Get(config.REST_COUNTRIES_API + config.PATH_REST_ALPHA + countryCode)
+func (cc *CountryClient) FetchCountryData(countryCode string) ([]structs.IncomingCountry, error) {
+
+	resp, err := cc.httpClient.Get(config.REST_COUNTRIES_API + config.PATH_REST_ALPHA + countryCode)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching country info: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("invalid country code: status code %d", resp.StatusCode)
+	}
 
 	var countryInfo []structs.IncomingCountry
 	if err := json.NewDecoder(resp.Body).Decode(&countryInfo); err != nil {

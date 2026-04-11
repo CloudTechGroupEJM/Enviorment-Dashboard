@@ -1,9 +1,8 @@
 package main
 
 import (
-	"envdash/internal/config"
 	"envdash/internal/app"
-
+	"envdash/internal/config"
 )
 
 /*

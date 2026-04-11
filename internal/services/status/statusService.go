@@ -1,7 +1,7 @@
-package services
+package status
 
 import (
-	"envdash/internal/client"
+	"envdash/internal/client/status"
 	"envdash/internal/config"
 	"envdash/internal/structs"
 	"fmt"
@@ -14,7 +14,7 @@ import (
 // holds a statusClient to get the HTTP functinaltiy
 type StatusInternal struct {
 	startTime time.Time
-	client    *client.StatusClient
+	client    *status.StatusClient
 }
 
 // StatusService
@@ -24,7 +24,7 @@ type StatusInternal struct {
 func StatusService(startTime time.Time) *StatusInternal {
 	return &StatusInternal{
 		startTime: startTime,
-		client:    client.NewStatusClient(),
+		client:    status.NewStatusClient(),
 	}
 }
 
@@ -38,7 +38,7 @@ func (s *StatusInternal) GetStatus() *structs.StatusResponse {
 		AqAPI:        healthStatus["openaq"],
 		Nominatim:    healthStatus["nominatim"],
 		CurrencyAPI:  healthStatus["currency"],
-		Db_noti:      0,
+		Db_noti:      0, //todo implement status of the firestore instance
 		Version:      config.APPLICATION_VERSION,
 		Uptime:       fmt.Sprintf("%.f", time.Since(s.startTime).Seconds()),
 	}
@@ -49,9 +49,9 @@ func (s *StatusInternal) GetStatus() *structs.StatusResponse {
 // returns a map of the status codes for all endpoints
 func (s *StatusInternal) probeAllEndpoints() map[string]int {
 	endpoints := map[string]string{
-		//cannot have the other methods as they need custom headers or Head not implemented
 		"countries": config.REST_COUNTRIES_API_PROBE,
 		"metro":     config.METRO_API,
+		"nominatim": config.NOMINATIM_PROBE,
 	}
 
 	healthStatuses := make(map[string]int)
@@ -64,7 +64,6 @@ func (s *StatusInternal) probeAllEndpoints() map[string]int {
 	}
 
 	healthStatuses["openaq"] = s.client.ProbeGetEndpoint(config.OPENAQ_PROBE, "", config.OPENAQ_KEY)
-	healthStatuses["nominatim"] = s.client.ProbeGetEndpoint(config.NOMINATIM_PROBE, "User-Agent", "evdash/")
 	healthStatuses["currency"] = s.client.ProbeGetEndpoint(config.CURRENCIES_API_PROBE, "", "")
 
 	return healthStatuses
