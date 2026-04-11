@@ -10,15 +10,15 @@ type RegisterCountry struct {
     ID         string    `firestore:"id,omitempty" json:"id"`
     Name       string    `firestore:"name" json:"name"`
     IsoCode    string    `firestore:"isoCode" json:"isoCode"`  // Fix this too if it has the typo
-    Features   Features  `firestore:"features" json:"features"`
+    Features   BoolFeature  `firestore:"features" json:"features"`
     LastChange time.Time `firestore:"lastChange" json:"lastChange"`
 }
 
 
-// Features contains boolean flags for available country features and target currencies.
+// BoolFeature contains boolean flags for available country features and target currencies.
 // Fields: Temperature, Precipitation, AirQuality, Capital, Coordinates, 
 // Area (all bool), TargetCurrencies (currency codes)
-type Features struct {
+type BoolFeature struct {
     Temperature      bool     `firestore:"temperature" json:"temperature"`
     Precipitation    bool     `firestore:"precipitation" json:"precipitation"`
     AirQuality       bool     `firestore:"airQuality" json:"airQuality"`
