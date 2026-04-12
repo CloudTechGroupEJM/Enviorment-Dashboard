@@ -6,6 +6,7 @@ import (
 	"envdash/internal/structs"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -63,7 +64,7 @@ func (s *StatusInternal) probeAllEndpoints() map[string]int {
 		healthStatuses[name] = statusCode
 	}
 
-	healthStatuses["openaq"] = s.client.ProbeGetEndpoint(config.OPENAQ_PROBE, "", config.OPENAQ_KEY)
+	healthStatuses["openaq"] = s.client.ProbeGetEndpoint(config.OPENAQ_PROBE, "", os.Getenv("OPEN_AQ_API_KEY"))
 	healthStatuses["currency"] = s.client.ProbeGetEndpoint(config.CURRENCIES_API_PROBE, "", "")
 
 	return healthStatuses

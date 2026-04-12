@@ -6,31 +6,36 @@ import (
 	"envdash/internal/utils"
 	"log"
 	"net/http"
+	"os"
 )
 
-/*
-Initializing the server
-*/
+// StartServer
+// Initializing the server
+// Loads the .env file, checks if the port is available, initializes the firebase client and sets up the handlers
 func StartServer(port string) {
-    if utils.IsPortAvailable(port) == true{
-        router := http.NewServeMux()
+	// Load the .env file
+	if _, err := os.Stat(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")); os.IsNotExist(err) {
+		log.Fatal("Environment variables: GOOGLE_APPLICATION_CREDENTIALS doesn't exist!")
+	}
+	if _, err := os.Stat(os.Getenv("OPEN_AQ_API_KEY")); os.IsNotExist(err) {
+		log.Fatal("Environment variables: OPEN_AQ_API_KEY doesn't exist!")
+	}
+	if utils.IsPortAvailable(port) == true {
+		router := http.NewServeMux()
 
+		// initializing firebase
+		client, clientErrInit := store.GetFirebaseClient()
+		if clientErrInit != nil {
+			log.Println("Error occurred when initializing Firebase client.")
+			return
+		}
+		defer client.Close()
 
-        // initalizing firebase
-        client, clientErrInit := store.GetFirebaseClient()
-        if clientErrInit != nil {
-            log.Println("Error occurred when initializing Firebase client.")
-            return
-        }
-        defer client.Close()
-        
-        handlers.SetupAllHandlers(router, client)
+		handlers.SetupAllHandlers(router, client)
 
-
-        log.Println("Starting HTTP server on port " + port)
-        log.Fatal(http.ListenAndServe(":"+port, router))
-    }else{
-        log.Println("Port Oocupied!!!!!!!!!!")
-    }
+		log.Println("Starting HTTP server on port " + port)
+		log.Fatal(http.ListenAndServe(":"+port, router))
+	} else {
+		log.Println("Port Oocupied!!!!!!!!!!")
+	}
 }
-
