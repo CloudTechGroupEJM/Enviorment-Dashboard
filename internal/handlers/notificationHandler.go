@@ -31,6 +31,7 @@ type notificationServiceAPI interface {
 // Parameters:
 //   - router: *http.ServeMux - The HTTP request multiplexer to register handlers with
 //   - client: *firestore.Client - The Firestore client used by the NotificationService for database operations
+//
 // Returns:
 //   - *services.NotificationService: The initialized NotificationService instance used by the handlers
 func notificationsHandler(router *http.ServeMux, client *firestore.Client) *services.NotificationService {
@@ -122,7 +123,7 @@ func (handler *NotificationHandler) getNotifications(writer http.ResponseWriter,
 }
 
 // deleteNotification handles the deletion of a notification registration by its ID. It expects the ID to be provided in the request path.
-//If the notification with the specified ID is found, it deletes it and returns a 204 No Content status. If the notification is not found, it returns a 404 Not Found status.
+// If the notification with the specified ID is found, it deletes it and returns a 204 No Content status. If the notification is not found, it returns a 404 Not Found status.
 //
 // Parameters:
 //   - writer: http.ResponseWriter - The HTTP response writer used to send responses back to the client
@@ -152,6 +153,7 @@ func (handler *NotificationHandler) deleteNotification(writer http.ResponseWrite
 //
 // Parameters:
 //   - err: error - The error to check for being a "not found" error
+//
 // Returns:
 //   - bool: true if the error is a "not found" error, false otherwise
 func isNotFound(err error) bool {
