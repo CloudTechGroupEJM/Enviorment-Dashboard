@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"log"
+	"os"
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
@@ -29,7 +30,7 @@ func GetFirebaseClient() (*firestore.Client, error) {
 	// We use a service account, load credentials file that you downloaded from your project's settings menu.
 	// It should reside in your project directory.
 	// Make sure this file is git-ignored, since it is the access token to the database.
-	credentialsOption := option.WithCredentialsFile(DB_CREDDENTIAL_PATH)
+	credentialsOption := option.WithAuthCredentialsFile(option.ServiceAccount, os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 	firebaseApp, firebaseAppInitError := firebase.NewApp(firebaseContext, nil, credentialsOption)
 	if firebaseAppInitError != nil {
 		log.Println(firebaseAppInitError)

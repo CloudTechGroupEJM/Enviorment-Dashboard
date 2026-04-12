@@ -1,28 +1,27 @@
 package handlers
 
 import (
+	"cloud.google.com/go/firestore"
 	"encoding/json"
 	"envdash/internal/config"
-	"envdash/internal/services/registration"
+	"envdash/internal/services"
 	"envdash/internal/structs"
 	"log"
 	"net/http"
 	"strconv"
-
-	"cloud.google.com/go/firestore"
 )
 
 const SUCCESSFUL_EXECUTION = "Request successfully executed"
 const INVALID_JSON = "Invalid JSON payload"
 
 type RegistrationHandler struct {
-	service *registration.RegistrationService
+	service *services.RegistrationService
 }
 
 // InitRegistration initializes the registration service, handler and endpoints.
 // Parameters: router - HTTP router, client - Firestore client
 func InitRegistration(router *http.ServeMux, client *firestore.Client) {
-	service := registration.NewRegistrationService(client)
+	service := services.NewRegistrationService(client)
 	handler := &RegistrationHandler{
 		service: service,
 	}
@@ -68,7 +67,7 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 		return
 	}
 
-	registrationID, creationErr := handler.service.Post(request.Context(), registration)
+	registrationID, CreationTime, creationErr := handler.service.Post(request.Context(), registration)
 	if creationErr != nil {
 		http.Error(writer, creationErr.Error(), http.StatusBadRequest)
 		log.Println("Error when creating registration: " + creationErr.Error())
@@ -80,7 +79,7 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 
 	_ = json.NewEncoder(writer).Encode(map[string]string{
 		"id":         registrationID,
-		"lastChange": registration.LastChange.String(),
+		"lastChange": CreationTime,
 	})
 	log.Println(SUCCESSFUL_EXECUTION)
 }

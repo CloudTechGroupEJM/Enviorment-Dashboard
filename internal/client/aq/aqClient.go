@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 )
 
@@ -86,14 +87,14 @@ func requestAQ(url string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("X-API-Key", config.OPENAQ_KEY)
+	req.Header.Set("X-API-Key", os.Getenv("OPEN_AQ_API_KEY"))
 	return req, nil
 }
 
 // openAqUrl
 // creates the url used to the sensors
 func openAqUrl(lat, lon float64) string {
-	urlCreated, _ := url.Parse(config.OPENAQ_API + "/locations")
+	urlCreated, _ := url.Parse(os.Getenv("OPEN_AQ_API_KEY") + "/locations")
 	q := urlCreated.Query()
 	q.Set("coordinates", fmt.Sprintf("%.4f,%.4f", lat, lon))
 	q.Set("radius", "25000")
