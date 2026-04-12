@@ -14,6 +14,7 @@ import (
 const SUCCESSFUL_EXECUTION = "Request successfully executed"
 const INVALID_JSON = "Invalid JSON payload"
 
+
 type RegistrationHandler struct {
 	service *services.RegistrationService
 }
@@ -67,7 +68,7 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 		return
 	}
 
-	registrationID, creationErr := handler.service.Post(request.Context(), registration)
+	registrationID, CreationTime ,creationErr := handler.service.Post(request.Context(), registration)
 	if creationErr != nil {
 		http.Error(writer, creationErr.Error(), http.StatusBadRequest)
 		log.Println("Error when creating registration: " + creationErr.Error())
@@ -79,7 +80,7 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 
 	_ = json.NewEncoder(writer).Encode(map[string]string{
 		"id": registrationID,
-		"lastChange" : registration.LastChange.String(),
+		"lastChange" : CreationTime,
 	})
 	log.Println(SUCCESSFUL_EXECUTION)
 }

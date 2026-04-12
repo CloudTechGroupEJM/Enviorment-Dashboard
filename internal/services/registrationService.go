@@ -13,6 +13,8 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
+const DATE_FORMAT = "20060102 15:04:05"
+
 type RegistrationService struct {
 	client *firestore.Client
 }
@@ -42,19 +44,19 @@ func NewRegistrationService(client *firestore.Client) *RegistrationService {
 // Returns:
 //   - string: generated Firestore document ID on success
 //   - error: validation error, duplicate ISO code error, or Firestore error
-func (service *RegistrationService) Post(ctx context.Context, registration structs.RegisterCountry) (string, error) {
+func (service *RegistrationService) Post(ctx context.Context, registration structs.RegisterCountry) (string, string ,error) {
 	if validationErr := utils.Validation(&registration); validationErr != nil {
-		return "", validationErr
+		return "", "" ,validationErr
 	}
 
-	registration.LastChange = time.Now()
+	registration.LastChange = time.Now().Format(DATE_FORMAT)
 
 	isoExists, isoErr := service.isoCodeExists(ctx, registration.IsoCode)
 	if isoErr != nil {
-		return "", isoErr
+		return "", "", isoErr
 	}
 	if isoExists {
-		return "", errors.New("isoCode already exists in registration collection")
+		return "", "" ,errors.New("isoCode already exists in registration collection")
 	}
 
 	registrationDoc := service.client.Collection(store.REGISTRATIONCOLLECTION).NewDoc()
@@ -62,9 +64,9 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 
 	_, creationError := registrationDoc.Set(ctx, registration)
 	if creationError != nil {
-		return "", creationError
+		return "", "" ,creationError
 	}
-	return registrationDoc.ID, nil
+	return registrationDoc.ID, registration.LastChange ,nil
 }
 
 // GetAll retrieves all registrations from the Firestore collection.
@@ -200,7 +202,7 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 	if validationErr := utils.Validation(newRegistration); validationErr != nil {
 		return "", validationErr
 	}
-	newRegistration.LastChange = time.Now()
+	newRegistration.LastChange = time.Now().Format(DATE_FORMAT)
 	_, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID).Set(ctx, newRegistration)
 	if registrationErr != nil {
@@ -229,7 +231,7 @@ func (service *RegistrationService) Patch(registrationID string, ctx context.Con
 	registration := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID)
 
-	dataUpdate["lastChange"] = time.Now()
+	dataUpdate["lastChange"] = time.Now().Format(DATE_FORMAT)
 
 	updates, fieldsErr := toUpdateFields(dataUpdate)
 	if fieldsErr != nil {
