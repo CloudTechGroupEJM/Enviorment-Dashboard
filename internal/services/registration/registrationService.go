@@ -1,4 +1,4 @@
-package services
+package registration
 
 import (
 	"context"
@@ -101,14 +101,21 @@ func (service *RegistrationService) GetAll(ctx context.Context) ([]map[string]in
 //   - ctx: context for the operation
 //
 // Returns:
-//   - map[string]interface{}: registration document data on success
+//   - *structs.RegisterCountry: registration document data on success
 //   - error: error if not found or query fails
-func (service *RegistrationService) GetByID(registrationID string, ctx context.Context) (map[string]interface{}, error) {
-	registration, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
+func (service *RegistrationService) GetByID(registrationID string, ctx context.Context) (*structs.RegisterCountry, error) {
+	registrationSnapshot, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
 	if registrationErr != nil {
 		return nil, registrationErr
 	}
-	return registration.Data(), nil
+
+	// Create an empty struct and use DataTo to populate it
+	var registrationStruct structs.RegisterCountry
+	if err := registrationSnapshot.DataTo(&registrationStruct); err != nil {
+		return nil, err // Return an error if mapping fails
+	}
+
+	return &registrationStruct, nil
 }
 
 // DeleteAll removes all documents from the registrations collection.
@@ -164,7 +171,6 @@ func (service *RegistrationService) DeleteByID(registrationID string, ctx contex
 	return true, nil
 }
 
-
 // registrationExists checks if a registration document exists by its ID.
 //
 // Parameters:
@@ -209,7 +215,6 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 	return registrationID, registrationErr
 }
 
-
 // Patch performs a partial update of a registration document.
 //
 // Parameters:
@@ -243,7 +248,6 @@ func (service *RegistrationService) Patch(registrationID string, ctx context.Con
 
 	return nil
 }
-
 
 // toUpdateFields converts a map to Firestore Update objects for partial updates.
 //
@@ -301,7 +305,7 @@ func (service *RegistrationService) HeadAllRegistrations(ctx context.Context) (i
 //   - map[string]interface{}: registration document data on success
 //   - error: error if not found or query fails
 func (service *RegistrationService) HeadOneRegistration(registrationID string,
-	ctx context.Context) (map[string]interface{}, error) {
+	ctx context.Context) (*structs.RegisterCountry, error) {
 	registration, registrationErr := service.GetByID(registrationID, ctx)
 	if registrationErr != nil {
 		return nil, registrationErr

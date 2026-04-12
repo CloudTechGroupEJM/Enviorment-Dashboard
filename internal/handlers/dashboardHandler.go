@@ -5,18 +5,18 @@ import (
 	"envdash/internal/config"
 	"envdash/internal/services/dashboard"
 	"net/http"
+
+	"cloud.google.com/go/firestore"
 )
 
 // todo: this is just a test
 // todo: fix to work with the configuration of dashboard
 var dashboardService *dashboard.DashBoardInternal
 
-func init() {
-	dashboardService = dashboard.NewDashboardService()
-}
-
-func DashboardRouter(router *http.ServeMux) {
+func DashboardRouter(router *http.ServeMux, client *firestore.Client) {
+	dashboardService = dashboard.NewDashboardService(client)
 	router.HandleFunc(config.DASHBOARDS_PAGE_PATH+"{p1}", dashboardHandler(dashboardService))
+
 }
 
 func dashboardHandler(service *dashboard.DashBoardInternal) http.HandlerFunc {

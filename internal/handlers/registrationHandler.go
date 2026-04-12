@@ -3,11 +3,12 @@ package handlers
 import (
 	"encoding/json"
 	"envdash/internal/config"
-	"envdash/internal/services"
+	"envdash/internal/services/registration"
 	"envdash/internal/structs"
 	"log"
 	"net/http"
 	"strconv"
+
 	"cloud.google.com/go/firestore"
 )
 
@@ -15,13 +16,13 @@ const SUCCESSFUL_EXECUTION = "Request successfully executed"
 const INVALID_JSON = "Invalid JSON payload"
 
 type RegistrationHandler struct {
-	service *services.RegistrationService
+	service *registration.RegistrationService
 }
 
 // InitRegistration initializes the registration service, handler and endpoints.
 // Parameters: router - HTTP router, client - Firestore client
 func InitRegistration(router *http.ServeMux, client *firestore.Client) {
-	service := services.NewRegistrationService(client)
+	service := registration.NewRegistrationService(client)
 	handler := &RegistrationHandler{
 		service: service,
 	}
@@ -78,8 +79,8 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 	writer.WriteHeader(http.StatusCreated)
 
 	_ = json.NewEncoder(writer).Encode(map[string]string{
-		"id": registrationID,
-		"lastChange" : registration.LastChange.String(),
+		"id":         registrationID,
+		"lastChange": registration.LastChange.String(),
 	})
 	log.Println(SUCCESSFUL_EXECUTION)
 }
@@ -168,7 +169,7 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 
 		if replaceRegistrationErr != nil {
 			log.Printf("registration doesn't exist: %s ", replaceRegistrationErr)
-			http.Error(writer, "Couldn't replace registration: " + replaceRegistrationErr.Error(), http.StatusBadRequest)
+			http.Error(writer, "Couldn't replace registration: "+replaceRegistrationErr.Error(), http.StatusBadRequest)
 			return
 		} else {
 			log.Printf("registration %s fully replaced", replaceRegistrationErr)

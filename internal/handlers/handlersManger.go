@@ -15,8 +15,8 @@ Parameters:
 */
 func SetupAllHandlers(router *http.ServeMux, client *firestore.Client) {
 	authHandler(router)
-	InitRegistration(router,client)
+	InitRegistration(router, client)
 	notificationsHandler(router)
 	StatusRouter(router)
-	DashboardRouter(router)
+	DashboardRouter(router, client)
 }
