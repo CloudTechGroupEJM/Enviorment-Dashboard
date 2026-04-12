@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${GOOGLE_APPLICATION_CREDENTIALS}:/app/credentials/credentials.json
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/credentials.json
+      - OPEN_AQ_API_KEY=${OPEN_AQ_API_KEY}
