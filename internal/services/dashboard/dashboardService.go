@@ -72,7 +72,8 @@ func (dashI *DashBoardInternal) GetDashboard(id string) (*structs.DashboardRespo
 func (dashI *DashBoardInternal) fetchCountryData(isoCode string, requested structs.BoolFeature) (*structs.IncomingCountry, error) {
 	needsData := requested.Capital || requested.Area || len(requested.TargetCurrencies) > 0 ||
 		requested.Temperature ||
-		requested.Precipitation || requested.AirQuality || requested.Coordinates //todo: uncomment requested.Population
+		requested.Precipitation || requested.AirQuality ||
+		requested.Coordinates || requested.Population
 	if !needsData {
 		return nil, nil
 	}
@@ -139,7 +140,7 @@ func (dashI *DashBoardInternal) fetchCurrencies(countryData *structs.IncomingCou
 	}
 
 	code := firstCurrency(countryData.Currencies)
-	info, err := dashI.curSer.GetCurrency(code, []string{"USD", "EUR"})
+	info, err := dashI.curSer.GetCurrency(code, requested.TargetCurrencies)
 	if err != nil {
 		log.Printf("Failed to get currencies: %v", err)
 		return nil
@@ -180,11 +181,15 @@ func buildDashboard(
 	}
 
 	if countryData != nil {
-		// if reg.Features.Population {
-		//     features.Population = countryData.Population
-		// }
+		if reg.Features.Population {
+			features.Population = countryData.Population
+		}
 		if reg.Features.Area {
 			features.Area = countryData.Area
+		}
+
+		if reg.Features.Capital && len(countryData.Capital) > 0 {
+			features.Capital = countryData.Capital[0]
 		}
 	}
 
