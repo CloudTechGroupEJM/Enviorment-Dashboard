@@ -10,15 +10,15 @@ type DashboardResponse struct {
 type Features struct {
 	Temperature      string             `json:"temperature,omitempty"`
 	Precipitation    string             `json:"precipitation,omitempty"`
-	AirQuality       AqResponse         `json:"airQuality,omitempty"`
+	AirQuality       *AqResponse        `json:"airQuality,omitempty"`
 	Capital          string             `json:"capital,omitempty"`
-	Coordinates      CoordinateDetails  `json:"coordinates,omitempty"`
+	Coordinates      *CoordinateDetails `json:"coordinates,omitempty"`
 	Population       int                `json:"population,omitempty"`
 	Area             float64            `json:"area,omitempty"`
 	TargetCurrencies map[string]float64 `json:"targetCurrencies,omitempty"`
 }
 
 type CoordinateDetails struct {
-	Latitude  float64 `json:"latitude,omitempty"`
-	Longitude float64 `json:"longitude,omitempty"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }

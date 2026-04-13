@@ -166,7 +166,7 @@ func buildDashboard(
 	}
 
 	if aqData != nil {
-		features.AirQuality = *aqData
+		features.AirQuality = aqData
 	}
 
 	if currencies != nil {
@@ -174,7 +174,7 @@ func buildDashboard(
 	}
 
 	if reg.Features.Coordinates && nomiData != nil {
-		features.Coordinates = structs.CoordinateDetails{
+		features.Coordinates = &structs.CoordinateDetails{
 			Latitude:  nomiData.Lat,
 			Longitude: nomiData.Lon,
 		}
