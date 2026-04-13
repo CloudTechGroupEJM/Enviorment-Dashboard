@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"envdash/internal/config"
 	"envdash/internal/services"
@@ -8,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"cloud.google.com/go/firestore"
 )
@@ -79,6 +81,7 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 
 	writer.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
 	writer.WriteHeader(http.StatusCreated)
+	handler.dispatchLifecycleByID(request.Context(), registrationID, structs.NotificationEventRegister)
 
 	_ = json.NewEncoder(writer).Encode(map[string]string{
 		"id":         registrationID,
@@ -125,31 +128,60 @@ func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter,
 func (handler *RegistrationHandler) deleteRegistrations(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	if request.PathValue("id") == "" {
-		deletionErr := handler.service.DeleteAll(request.Context())
-		if deletionErr != nil {
-			log.Printf("Error nothing to delete %s", deletionErr)
-			http.Error(writer, "Nothing to delete.", http.StatusNotFound)
-			return
-		} else {
-			http.Error(writer, "All registration deleted", http.StatusOK)
-		}
+		handler.deleteAllRegistrations(writer, request)
 	} else {
-		deleted, deletionErr := handler.service.DeleteByID(request.PathValue("id"), request.Context())
-		if deletionErr != nil {
-			http.Error(writer, "Error when trying to delete.", http.StatusOK)
-			log.Println("Deletion error when deleting by ID")
-			return
-		}
-		if deleted {
-			http.Error(writer, "registration has been deleted", http.StatusOK)
-			log.Println("registration with id " + request.PathValue("id") + " has been deleted")
-		} else {
-			http.Error(writer, "Error registration doesn't exist", http.StatusNoContent)
-			log.Println("Registration: " + request.PathValue("id") + " doesnt exist")
-			return
-		}
+		handler.deleteRegistrationByID(writer, request)
 	}
 	log.Println(SUCCESSFUL_EXECUTION)
+}
+
+// deleteAllRegistrations deletes all registrations and dispatches delete lifecycle events for each.
+//
+// Parameters:
+//   - writer - HTTP response writer, request - HTTP request
+func (handler *RegistrationHandler) deleteAllRegistrations(writer http.ResponseWriter, request *http.Request) {
+	snapshot, lookupErr := handler.service.GetAll(request.Context())
+	deletionErr := handler.service.DeleteAll(request.Context())
+	if deletionErr != nil {
+		log.Printf("Error nothing to delete %s", deletionErr)
+		http.Error(writer, "Nothing to delete.", http.StatusNotFound)
+		return
+	}
+	if lookupErr == nil {
+		for _, registration := range snapshot {
+			handler.dispatchLifecycleFromRegistration(registration, structs.NotificationEventDelete)
+		}
+	}
+	http.Error(writer, "All registration deleted", http.StatusOK)
+}
+
+// deleteRegistrationByID deletes a specific registration by ID and dispatches a delete lifecycle event.
+//
+// Parameters:
+//   - writer - HTTP response writer, request - HTTP request with registration ID in the path
+func (handler *RegistrationHandler) deleteRegistrationByID(writer http.ResponseWriter, request *http.Request) {
+	registration, lookupErr := handler.service.GetByID(request.PathValue("id"), request.Context())
+	if lookupErr != nil {
+		http.Error(writer, "Error when trying to delete.", http.StatusOK)
+		log.Println("Deletion lookup error when deleting by ID")
+		return
+	}
+
+	deleted, deletionErr := handler.service.DeleteByID(request.PathValue("id"), request.Context())
+	if deletionErr != nil {
+		http.Error(writer, "Error when trying to delete.", http.StatusOK)
+		log.Println("Deletion error when deleting by ID")
+		return
+	}
+	if deleted {
+		handler.dispatchLifecycleFromRegistration(registration, structs.NotificationEventDelete)
+		http.Error(writer, "registration has been deleted", http.StatusOK)
+		log.Println("registration with id " + request.PathValue("id") + " has been deleted")
+		return
+	}
+
+	http.Error(writer, "Error registration doesn't exist", http.StatusNoContent)
+	log.Println("Registration: " + request.PathValue("id") + " doesnt exist")
 }
 
 // putRegistration handles HTTP PUT requests to replace an entire registration.
@@ -176,6 +208,7 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 		} else {
 			log.Printf("registration %s fully replaced", replaceRegistrationErr)
 			writer.WriteHeader(http.StatusOK)
+			handler.dispatchLifecycleByID(request.Context(), registrationID, structs.NotificationEventChange)
 
 			_ = json.NewEncoder(writer).Encode(map[string]string{
 				"id":     registrationID,
@@ -213,6 +246,7 @@ func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter
 		http.Error(writer, patchErr.Error(), http.StatusBadRequest)
 		return
 	}
+	handler.dispatchLifecycleByID(request.Context(), request.PathValue("id"), structs.NotificationEventChange)
 	_ = json.NewEncoder(writer).Encode(map[string]string{
 		"id":     request.PathValue("id"),
 		"status": "patched",
@@ -247,4 +281,42 @@ func (handler *RegistrationHandler) headRegistrations(writer http.ResponseWriter
 		writer.WriteHeader(http.StatusOK)
 	}
 	log.Println(SUCCESSFUL_EXECUTION)
+}
+
+// dispatchLifecycleByID retrieves a registration by ID and dispatches a lifecycle event based on the registration's isoCode.
+//
+// Parameters:
+//   - ctx: context for the operation
+//   - registrationID: ID of the registration to retrieve and dispatch event for
+//   - event: lifecycle event type to dispatch (e.g., "register", "change", "delete")
+func (handler *RegistrationHandler) dispatchLifecycleByID(ctx context.Context, registrationID string, event string) {
+	if handler.dispatcher == nil || strings.TrimSpace(registrationID) == "" {
+		return
+	}
+
+	registration, err := handler.service.GetByID(registrationID, ctx)
+	if err != nil {
+		log.Printf("could not resolve registration %s for webhook dispatch: %v", registrationID, err)
+		return
+	}
+	handler.dispatchLifecycleFromRegistration(registration, event)
+}
+
+// dispatchLifecycleFromRegistration dispatches a lifecycle event based on the isoCode in the registration data.
+//
+// Parameters:
+//   - registration: map containing registration data, expected to have an "isoCode" field
+//   - event: lifecycle event type to dispatch (e.g., "register", "change", "delete")
+func (handler *RegistrationHandler) dispatchLifecycleFromRegistration(registration map[string]interface{}, event string) {
+	if handler.dispatcher == nil || registration == nil {
+		return
+	}
+
+	isoCode, ok := registration["isoCode"].(string)
+	if !ok || strings.TrimSpace(isoCode) == "" {
+		log.Printf("skipping webhook dispatch for event %s: missing isoCode", event)
+		return
+	}
+
+	handler.dispatcher.DispatchLifecycleAsync(strings.ToUpper(strings.TrimSpace(isoCode)), event)
 }
