@@ -1,27 +1,28 @@
 package handlers
 
 import (
-	"cloud.google.com/go/firestore"
 	"encoding/json"
 	"envdash/internal/config"
-	"envdash/internal/services"
+	"envdash/internal/services/registration"
 	"envdash/internal/structs"
 	"log"
 	"net/http"
 	"strconv"
+
+	"cloud.google.com/go/firestore"
 )
 
 const SUCCESSFUL_EXECUTION = "Request successfully executed"
 const INVALID_JSON = "Invalid JSON payload"
 
 type RegistrationHandler struct {
-	service *services.RegistrationService
+	service *registration.RegistrationService
 }
 
 // InitRegistration initializes the registration service, handler and endpoints.
 // Parameters: router - HTTP router, client - Firestore client
 func InitRegistration(router *http.ServeMux, client *firestore.Client) {
-	service := services.NewRegistrationService(client)
+	service := registration.NewRegistrationService(client)
 	handler := &RegistrationHandler{
 		service: service,
 	}
