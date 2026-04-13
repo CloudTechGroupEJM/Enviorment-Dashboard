@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"cloud.google.com/go/firestore/apiv1/firestorepb"
 )
 
 // NotificationService provides methods for managing notification registrations and dispatching events to registered webhooks.
@@ -22,10 +23,15 @@ type NotificationService struct {
 	httpClient *http.Client
 }
 
+// ErrNotificationNotFound is returned when a requested notification registration cannot be found in the database.
 var ErrNotificationNotFound = errors.New("notification not found")
+
+// globalNotificationService holds a reference to the NotificationService for package-level access
+var globalNotificationService *NotificationService
 
 // NewNotificationService creates a new instance of NotificationService with the provided Firestore client and an optional HTTP client.
 // If the httpClient parameter is nil, a default HTTP client with a 5-second timeout will be used.
+// It also sets the global NotificationService instance for package-level access.
 //
 // Parameters:
 //   - client: *firestore.Client - The Firestore client used for database interactions. Must not be nil.
@@ -42,7 +48,9 @@ func NewNotificationService(client *firestore.Client, httpClient *http.Client) *
 		httpClient = &http.Client{Timeout: 5 * time.Second}
 	}
 
-	return &NotificationService{client: client, httpClient: httpClient}
+	service := &NotificationService{client: client, httpClient: httpClient}
+	globalNotificationService = service
+	return service
 }
 
 // Create registers a new notification based on the provided registration details.
@@ -143,6 +151,32 @@ func (service *NotificationService) List(ctx context.Context) ([]structs.Notific
 	}
 
 	return registrations, nil
+}
+
+// countNotifications retrieves the total number of notification registrations
+// currently stored in Firestore using an aggregation query.
+//
+// Returns:
+//   - int: The total number of notification registrations if retrieval is successful; otherwise, -1 if an error occurs.
+func (service *NotificationService) countNotifications() int {
+	ctx := context.Background()
+
+	aggregationQuery := service.client.
+		Collection(store.NOTIFICATION_COLLECTION).
+		NewAggregationQuery().
+		WithCount("count")
+
+	results, err := aggregationQuery.Get(ctx)
+	if err != nil {
+		return -1
+	}
+
+	count, ok := results["count"]
+	if !ok {
+		return -1
+	}
+
+	return int(count.(*firestorepb.Value).GetIntegerValue())
 }
 
 // DeleteByID removes a notification registration from Firestore based on its ID.
@@ -493,4 +527,16 @@ func isNotFoundError(err error) bool {
 	}
 	errText := strings.ToLower(err.Error())
 	return strings.Contains(errText, "notfound") || strings.Contains(errText, "not found")
+}
+
+// GetNotificationCount retrieves the total number of notification registrations from the global NotificationService instance.
+// This is a package-level function that provides access to the notification count for endpoints that need it.
+//
+// Returns:
+//   - int: The total number of notification registrations if retrieval is successful; otherwise, -1 if an error occurs or the service is not initialized.
+func GetNotificationCount() int {
+	if globalNotificationService == nil {
+		return -1
+	}
+	return globalNotificationService.countNotifications()
 }
