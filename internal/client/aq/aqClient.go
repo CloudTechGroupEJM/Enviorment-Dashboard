@@ -98,7 +98,7 @@ func openAqUrl(lat, lon float64) string {
 	q := urlCreated.Query()
 	q.Set("coordinates", fmt.Sprintf("%.4f,%.4f", lat, lon))
 	q.Set("radius", "25000")
-	q.Set("limit", "100")
+	q.Set("limit", "10")
 	urlCreated.RawQuery = q.Encode()
 	log.Println(urlCreated.String())
 	return urlCreated.String()
