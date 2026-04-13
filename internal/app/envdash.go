@@ -17,8 +17,8 @@ func StartServer(port string) {
 	if _, err := os.Stat(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")); os.IsNotExist(err) {
 		log.Fatal("Environment variables: GOOGLE_APPLICATION_CREDENTIALS doesn't exist!")
 	}
-	if _, err := os.Stat(os.Getenv("OPEN_AQ_API_KEY")); os.IsNotExist(err) {
-		log.Fatal("Environment variables: OPEN_AQ_API_KEY doesn't exist!")
+	if os.Getenv("OPEN_AQ_API_KEY") == "" {
+		log.Fatal("Environment variables: OPEN_AQ_API_KEY doesn't exist or is empty!")
 	}
 	if utils.IsPortAvailable(port) == true {
 		router := http.NewServeMux()
