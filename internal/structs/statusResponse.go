@@ -8,6 +8,7 @@ type StatusResponse struct {
 	Nominatim    int    `json:"nominatimApi"`
 	CurrencyAPI  int    `json:"currencyApi"`
 	Db_noti      int    `json:"notification_db"`
+	Webhooks     int    `json:"webhooks"`
 	Version      string `json:"version"`
 	Uptime       string `json:"uptime"`
 }

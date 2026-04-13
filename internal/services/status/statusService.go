@@ -40,6 +40,7 @@ func (s *StatusInternal) GetStatus() *structs.StatusResponse {
 		Nominatim:    healthStatus["nominatim"],
 		CurrencyAPI:  healthStatus["currency"],
 		Db_noti:      0, //todo implement status of the firestore instance
+		Webhooks:     0, //todo implement
 		Version:      config.APPLICATION_VERSION,
 		Uptime:       fmt.Sprintf("%.f", time.Since(s.startTime).Seconds()),
 	}
