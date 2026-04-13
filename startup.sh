@@ -1,5 +1,5 @@
 git pull origin main
 
-docker rm -f cloud-assignment-2
-docker build -t cloud-assignment-2 .
-docker compose -f cloud-assignment-2.yaml -p cloud-assignment-2 up -d
+docker rm -f assignment-2-app-1
+docker compose build
+docker compose up -d
