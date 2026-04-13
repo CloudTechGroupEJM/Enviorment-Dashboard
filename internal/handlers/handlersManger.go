@@ -14,8 +14,8 @@ import (
 //   - client: *firestore.Client - The Firestore client used by handlers that require database access
 func SetupAllHandlers(router *http.ServeMux, client *firestore.Client) {
 	authHandler(router)
-	InitRegistration(router, client)
-	notificationsHandler(router, client)
+	dispatcher := notificationsHandler(router, client)
+	InitRegistration(router, client, dispatcher)
 	StatusRouter(router)
-	DashboardRouter(router)
+	DashboardRouter(router, dispatcher)
 }

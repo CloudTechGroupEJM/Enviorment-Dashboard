@@ -8,23 +8,25 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+
 	"cloud.google.com/go/firestore"
 )
 
 const SUCCESSFUL_EXECUTION = "Request successfully executed"
 const INVALID_JSON = "Invalid JSON payload"
 
-
 type RegistrationHandler struct {
-	service *services.RegistrationService
+	service    *services.RegistrationService
+	dispatcher webhookDispatcher
 }
 
 // InitRegistration initializes the registration service, handler and endpoints.
 // Parameters: router - HTTP router, client - Firestore client
-func InitRegistration(router *http.ServeMux, client *firestore.Client) {
+func InitRegistration(router *http.ServeMux, client *firestore.Client, dispatcher webhookDispatcher) {
 	service := services.NewRegistrationService(client)
 	handler := &RegistrationHandler{
-		service: service,
+		service:    service,
+		dispatcher: dispatcher,
 	}
 
 	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH, handler.handleRegistrations)
@@ -68,7 +70,7 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 		return
 	}
 
-	registrationID, CreationTime ,creationErr := handler.service.Post(request.Context(), registration)
+	registrationID, CreationTime, creationErr := handler.service.Post(request.Context(), registration)
 	if creationErr != nil {
 		http.Error(writer, creationErr.Error(), http.StatusBadRequest)
 		log.Println("Error when creating registration: " + creationErr.Error())
@@ -79,8 +81,8 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 	writer.WriteHeader(http.StatusCreated)
 
 	_ = json.NewEncoder(writer).Encode(map[string]string{
-		"id": registrationID,
-		"lastChange" : CreationTime,
+		"id":         registrationID,
+		"lastChange": CreationTime,
 	})
 	log.Println(SUCCESSFUL_EXECUTION)
 }
@@ -169,7 +171,7 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 
 		if replaceRegistrationErr != nil {
 			log.Printf("registration doesn't exist: %s ", replaceRegistrationErr)
-			http.Error(writer, "Couldn't replace registration: " + replaceRegistrationErr.Error(), http.StatusBadRequest)
+			http.Error(writer, "Couldn't replace registration: "+replaceRegistrationErr.Error(), http.StatusBadRequest)
 			return
 		} else {
 			log.Printf("registration %s fully replaced", replaceRegistrationErr)
