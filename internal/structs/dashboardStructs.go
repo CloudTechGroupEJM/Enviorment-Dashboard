@@ -8,17 +8,17 @@ type DashboardResponse struct {
 }
 
 type Features struct {
-	Temperature      string             `json:"temperature"`
-	Precipitation    string             `json:"precipitation"`
-	AirQuality       AqResponse         `json:"airQuality"`
-	Capital          string             `json:"capital"`
-	Coordinates      CoordinateDetails  `json:"coordinates"`
-	Population       int                `json:"population"`
-	Area             float64            `json:"area"`
-	TargetCurrencies map[string]float64 `json:"targetCurrencies"`
+	Temperature      string             `json:"temperature,omitempty"`
+	Precipitation    string             `json:"precipitation,omitempty"`
+	AirQuality       AqResponse         `json:"airQuality,omitempty"`
+	Capital          string             `json:"capital,omitempty"`
+	Coordinates      CoordinateDetails  `json:"coordinates,omitempty"`
+	Population       int                `json:"population,omitempty"`
+	Area             float64            `json:"area,omitempty"`
+	TargetCurrencies map[string]float64 `json:"targetCurrencies,omitempty"`
 }
 
 type CoordinateDetails struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+	Latitude  float64 `json:"latitude,omitempty"`
+	Longitude float64 `json:"longitude,omitempty"`
 }
