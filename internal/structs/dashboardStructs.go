@@ -1,10 +1,10 @@
 package structs
 
 type DashboardResponse struct {
-	Country       string   `json:"country"`
-	IsoCode       string   `json:"isoCode"`
-	Features      Features `json:"features"`
-	LastRetrieval string   `json:"lastRetrieval"`
+	Country       string    `json:"country"`
+	IsoCode       string    `json:"isoCode"`
+	Features      *Features `json:"features,omitempty"`
+	LastRetrieval string    `json:"lastRetrieval"`
 }
 
 type Features struct {

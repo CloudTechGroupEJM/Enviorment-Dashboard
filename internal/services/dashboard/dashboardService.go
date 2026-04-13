@@ -158,23 +158,24 @@ func buildDashboard(
 	aqData *structs.AqResponse,
 	currencies *structs.CurrencyResponse,
 ) *structs.DashboardResponse {
-	features := structs.Features{}
+
+	var features *structs.Features
 
 	if metroData != nil {
-		features.Temperature = metroData.MeanTemperature     // only non-nil if requested
-		features.Precipitation = metroData.MeanPrecipitation // but see caveat below
+		getFeatures(&features).Temperature = metroData.MeanTemperature
+		getFeatures(&features).Precipitation = metroData.MeanPrecipitation
 	}
 
 	if aqData != nil {
-		features.AirQuality = aqData
+		getFeatures(&features).AirQuality = aqData
 	}
 
 	if currencies != nil {
-		features.TargetCurrencies = currencies.TargetCurrencies
+		getFeatures(&features).TargetCurrencies = currencies.TargetCurrencies
 	}
 
 	if reg.Features.Coordinates && nomiData != nil {
-		features.Coordinates = &structs.CoordinateDetails{
+		getFeatures(&features).Coordinates = &structs.CoordinateDetails{
 			Latitude:  nomiData.Lat,
 			Longitude: nomiData.Lon,
 		}
@@ -182,19 +183,19 @@ func buildDashboard(
 
 	if countryData != nil {
 		if reg.Features.Population {
-			features.Population = countryData.Population
+			getFeatures(&features).Population = countryData.Population
 		}
 		if reg.Features.Area {
-			features.Area = countryData.Area
+			getFeatures(&features).Area = countryData.Area
 		}
 
 		if reg.Features.Capital && len(countryData.Capital) > 0 {
-			features.Capital = countryData.Capital[0]
+			getFeatures(&features).Capital = countryData.Capital[0]
 		}
 	}
 
 	if len(reg.Features.TargetCurrencies) > 0 && currencies != nil {
-		features.TargetCurrencies = currencies.TargetCurrencies
+		getFeatures(&features).TargetCurrencies = currencies.TargetCurrencies
 	}
 
 	return &structs.DashboardResponse{
@@ -212,4 +213,12 @@ func firstCurrency(currencyMap map[string]struct{}) string {
 		return code
 	}
 	return "" // return empty string if map is empty
+}
+
+// getFeatures safely gets the Features struct, initializing it if it is nil.
+func getFeatures(features **structs.Features) *structs.Features {
+	if *features == nil {
+		*features = &structs.Features{}
+	}
+	return *features
 }
