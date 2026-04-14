@@ -16,8 +16,9 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
-// DashBoardInternal is the internal implementation of the dashboard service,
-// wrapping all services used by the dashboard.
+// DashBoardInternal aggregates multiple specific data domain services to build
+// the overall custom dashboard. It handles calls to country, currency,
+// meteorological, air quality, geocoding, and database management services.
 type DashBoardInternal struct {
 	counSer  *country.CountryInternal
 	curSer   *currency.CurrencyInternal
@@ -27,7 +28,15 @@ type DashBoardInternal struct {
 	firebase *registration.RegistrationService
 }
 
-// NewDashboardService returns a new DashBoardInternal instance with a configured HTTP client.
+// NewDashboardService initializes and returns a new DashBoardInternal instance.
+// It sets up all the sub-services needed for dashboard generation, injecting
+// the provided Firestore client into the registration (database) service.
+//
+// Parameters:
+//   - client: A pointer to the configured Firestore client.
+//
+// Returns:
+//   - A pointer to the initialized DashBoardInternal service.
 func NewDashboardService(client *firestore.Client) *DashBoardInternal {
 	return &DashBoardInternal{
 		counSer:  country.NewCountryService(),
@@ -39,186 +48,192 @@ func NewDashboardService(client *firestore.Client) *DashBoardInternal {
 	}
 }
 
-func (dashI *DashBoardInternal) GetDashboard(id string) (*structs.DashboardResponse, error) {
-	// 1. Get user preferences
-	reg, err := dashI.firebase.GetByID(id, context.Background())
+// GetDashboard retrieves a user's registered preferences and lazily fetches
+// only the required information to populate a cohesive dashboard response.
+//
+// Parameters:
+//   - id: The document ID of the user's registered dashboard in Firestore.
+//
+// Returns:
+//   - *structs.DashboardResponse: The aggregated dashboard data struct.
+//   - error: Returns an error if the registration isn't found or critical initial data (like country info) is unavailable.
+func (d *DashBoardInternal) GetDashboard(id string) (*structs.DashboardResponse, error) {
+	// Fetch user specifications from the database
+	reg, err := d.firebase.GetByID(id, context.Background())
+	if err != nil {
+		return nil, err
+	}
+	feat := reg.Features
+
+	// Fetch base country data depending on requirements
+	countryData, err := d.fetchCountry(reg.IsoCode, feat)
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. Country data
-	countryData, err := dashI.fetchCountryData(reg.IsoCode, reg.Features)
+	// Geocode the country's capital into coordinates if downstream data requires it
+	nomiData, err := d.fetchNominatim(countryData, feat)
 	if err != nil {
 		return nil, err
 	}
 
-	// 3. Nominatim data (needs capital from countryData)
-	nomiData, err := dashI.fetchNominatim(countryData, reg.Features)
-	if err != nil {
-		return nil, err
-	}
+	// Concurrently independent fetches using retrieved foundational data (gracefully allowing nil returns)
+	metroData := d.fetchMetro(nomiData, feat)
+	aqData := d.fetchAirQuality(nomiData, feat)
+	currencies := d.fetchCurrencies(countryData, feat)
 
-	// 4. Concurrently fetch external data requiring coordinates/currencies
-	metroData := dashI.fetchMetroData(nomiData, reg.Features)
-	aqData := dashI.fetchAirQuality(nomiData, reg.Features)
-	currencies := dashI.fetchCurrencies(countryData, reg.Features)
-
-	// 5. Construct Final Response cleanly
+	// Build the final struct view based on the returned data
 	return buildDashboard(reg, countryData, nomiData, metroData, aqData, currencies), nil
 }
 
-// fetchCountryData only calls the API if any country-derived field is requested,
-// or if a downstream call (nominatim → metro/aq, or currency) needs it.
-func (dashI *DashBoardInternal) fetchCountryData(isoCode string, requested structs.BoolFeature) (*structs.IncomingCountry, error) {
-	needsData := requested.Capital || requested.Area || len(requested.TargetCurrencies) > 0 ||
-		requested.Temperature ||
-		requested.Precipitation || requested.AirQuality ||
-		requested.Coordinates || requested.Population
-	if !needsData {
+// --- feature gates ---
+
+// needsCountry determines if the country API must be called based on the requested features
+// and dependencies of downstream services.
+func needsCountry(f structs.BoolFeature) bool {
+	return f.Capital || f.Area || f.Population || f.Coordinates ||
+		f.Temperature || f.Precipitation || f.AirQuality ||
+		len(f.TargetCurrencies) > 0
+}
+
+// needsCoords determines if latitude and longitude data is needed via the Geocoding API,
+// either for direct display or as parameters for downstream coordinate-dependent APIs.
+func needsCoords(f structs.BoolFeature) bool {
+	return f.Coordinates || f.Temperature || f.Precipitation || f.AirQuality
+}
+
+// --- fetchers ---
+
+// fetchCountry makes an API call to the country service to get foundational country data
+// if the user requested fields that depend on it. Returns nil without error if unneeded.
+func (d *DashBoardInternal) fetchCountry(iso string, f structs.BoolFeature) (*structs.IncomingCountry, error) {
+	if !needsCountry(f) {
 		return nil, nil
 	}
-
-	info, err := dashI.counSer.GetCountry(isoCode)
+	info, err := d.counSer.GetCountry(iso)
 	if err != nil || info == nil {
-		log.Printf("Failed to get country %s: %v", isoCode, err)
+		log.Printf("country lookup failed for %s: %v", iso, err)
 		return nil, errors.New("country not found")
 	}
 	return info, nil
 }
 
-// fetchNominatim only calls the API if a coordinate-derived field is requested.
-func (dashI *DashBoardInternal) fetchNominatim(countryData *structs.IncomingCountry, requested structs.BoolFeature) (*structs.NomResponse, error) {
-	needsData := requested.Temperature || requested.Precipitation || requested.AirQuality || requested.Coordinates
-	if !needsData {
+// fetchNominatim geocodes the given country's capital city to absolute coordinates.
+// It is bypassed if coordinates aren't needed. It returns an error if geocoding fails
+// because sequential steps strictly depend on these parameters.
+func (d *DashBoardInternal) fetchNominatim(c *structs.IncomingCountry, f structs.BoolFeature) (*structs.NomResponse, error) {
+	if !needsCoords(f) {
 		return nil, nil
 	}
-	if countryData == nil || len(countryData.Capital) == 0 {
+	if c == nil || len(c.Capital) == 0 {
 		return nil, errors.New("cannot geocode: missing capital")
 	}
-
-	info, err := dashI.nomSer.GetCapitalCords(countryData.Capital[0])
+	info, err := d.nomSer.GetCapitalCords(c.Capital[0])
 	if err != nil || info == nil {
-		log.Printf("Failed to geocode capital %s: %v", countryData.Capital[0], err)
+		log.Printf("geocoding failed for %s: %v", c.Capital[0], err)
 		return nil, errors.New("geocoding failed")
 	}
 	return info, nil
 }
 
-// fetchMetroData only calls the API if temperature or precipitation is requested.
-func (dashI *DashBoardInternal) fetchMetroData(nomiData *structs.NomResponse, requested structs.BoolFeature) *structs.MetroResponse {
-	needsData := requested.Temperature || requested.Precipitation
-	if !needsData || nomiData == nil {
+// fetchMetro retrieves meteorological data (weather) using provided coordinates.
+// Failures to fetch this data are swallowed and logged, allowing for graceful partial degradation.
+func (d *DashBoardInternal) fetchMetro(n *structs.NomResponse, f structs.BoolFeature) *structs.MetroResponse {
+	if n == nil || !(f.Temperature || f.Precipitation) {
 		return nil
 	}
-
-	info, err := dashI.metroSer.GetMetro(nomiData.Lat, nomiData.Lon)
+	info, err := d.metroSer.GetMetro(n.Lat, n.Lon)
 	if err != nil {
-		log.Printf("Failed to get metro data: %v", err)
+		log.Printf("metro fetch failed: %v", err)
 		return nil
 	}
 	return info
 }
 
-// fetchAirQuality only calls the API if air quality is requested.
-func (dashI *DashBoardInternal) fetchAirQuality(nomiData *structs.NomResponse, requested structs.BoolFeature) *structs.AqResponse {
-	if !requested.AirQuality || nomiData == nil {
+// fetchAirQuality retrieves localized air quality conditions using providing coordinates.
+// Failures to fetch this data are swallowed and logged, returning nil.
+func (d *DashBoardInternal) fetchAirQuality(n *structs.NomResponse, f structs.BoolFeature) *structs.AqResponse {
+	if n == nil || !f.AirQuality {
 		return nil
 	}
-
-	info, err := dashI.aqSer.GetAQ(nomiData.Lat, nomiData.Lon)
+	info, err := d.aqSer.GetAQ(n.Lat, n.Lon)
 	if err != nil {
-		log.Printf("Failed to get air quality: %v", err)
+		log.Printf("air quality fetch failed: %v", err)
 		return nil
 	}
 	return info
 }
 
-// fetchCurrencies only calls the API if target currencies are requested.
-func (dashI *DashBoardInternal) fetchCurrencies(countryData *structs.IncomingCountry, requested structs.BoolFeature) *structs.CurrencyResponse {
-	if len(requested.TargetCurrencies) <= 0 {
+// fetchCurrencies retrieves currency conversion info between a primary currency
+// and a list of target currencies. Failures are handled gracefully by returning nil.
+func (d *DashBoardInternal) fetchCurrencies(c *structs.IncomingCountry, f structs.BoolFeature) *structs.CurrencyResponse {
+	if c == nil || len(f.TargetCurrencies) == 0 {
 		return nil
 	}
-
-	code := firstCurrency(countryData.Currencies)
-	info, err := dashI.curSer.GetCurrency(code, requested.TargetCurrencies)
+	info, err := d.curSer.GetCurrency(firstCurrency(c.Currencies), f.TargetCurrencies)
 	if err != nil {
-		log.Printf("Failed to get currencies: %v", err)
+		log.Printf("currency fetch failed: %v", err)
 		return nil
 	}
 	return info
 }
 
-// buildDashboard assembles the final response, populating only the features
-// that were requested and successfully fetched.
+// --- response assembly ---
+
+// buildDashboard maps the individually fetched responses into a single combined
+// DashboardResponse payload. It strictly validates whether a piece of data
+// was historically requested by the user, and if so cleanly assigns it.
+//
+// Unrequested features, or features for which failures gracefully bypassed assignment,
+// will remain unpopulated/omitted in the JSON output depending on their struct tags.
 func buildDashboard(
 	reg *structs.RegisterCountry,
-	countryData *structs.IncomingCountry,
-	nomiData *structs.NomResponse,
-	metroData *structs.MetroResponse,
-	aqData *structs.AqResponse,
-	currencies *structs.CurrencyResponse,
-) *structs.DashboardResponse {
+	country *structs.IncomingCountry,
+	nom *structs.NomResponse,
+	metro *structs.MetroResponse,
+	aq *structs.AqResponse,
+	cur *structs.CurrencyResponse) *structs.DashboardResponse {
+	feats := &structs.Features{}
+	req := reg.Features
 
-	var features *structs.Features
-
-	if metroData != nil {
-		getFeatures(&features).Temperature = metroData.MeanTemperature
-		getFeatures(&features).Precipitation = metroData.MeanPrecipitation
+	if metro != nil {
+		feats.Temperature = metro.MeanTemperature
+		feats.Precipitation = metro.MeanPrecipitation
 	}
-
-	if aqData != nil {
-		getFeatures(&features).AirQuality = aqData
+	if aq != nil {
+		feats.AirQuality = aq
 	}
-
-	if currencies != nil {
-		getFeatures(&features).TargetCurrencies = currencies.TargetCurrencies
+	if cur != nil {
+		feats.TargetCurrencies = cur.TargetCurrencies
 	}
-
-	if reg.Features.Coordinates && nomiData != nil {
-		getFeatures(&features).Coordinates = &structs.CoordinateDetails{
-			Latitude:  nomiData.Lat,
-			Longitude: nomiData.Lon,
+	if req.Coordinates && nom != nil {
+		feats.Coordinates = &structs.CoordinateDetails{Latitude: nom.Lat, Longitude: nom.Lon}
+	}
+	if country != nil {
+		if req.Population {
+			feats.Population = country.Population
 		}
-	}
-
-	if countryData != nil {
-		if reg.Features.Population {
-			getFeatures(&features).Population = countryData.Population
+		if req.Area {
+			feats.Area = country.Area
 		}
-		if reg.Features.Area {
-			getFeatures(&features).Area = countryData.Area
+		if req.Capital && len(country.Capital) > 0 {
+			feats.Capital = country.Capital[0]
 		}
-
-		if reg.Features.Capital && len(countryData.Capital) > 0 {
-			getFeatures(&features).Capital = countryData.Capital[0]
-		}
-	}
-
-	if len(reg.Features.TargetCurrencies) > 0 && currencies != nil {
-		getFeatures(&features).TargetCurrencies = currencies.TargetCurrencies
 	}
 
 	return &structs.DashboardResponse{
 		Country:       reg.Name,
 		IsoCode:       reg.IsoCode,
-		Features:      features,
+		Features:      feats,
 		LastRetrieval: time.Now().Format(time.DateTime),
 	}
 }
 
-// firstCurrency
-// gets the first currency in the currency map
-func firstCurrency(currencyMap map[string]struct{}) string {
-	for code := range currencyMap {
+// firstCurrency extracts the first currency code found in a currency mapping.
+// Returns an empty string if the map is empty.
+func firstCurrency(m map[string]struct{}) string {
+	for code := range m {
 		return code
 	}
-	return "" // return empty string if map is empty
-}
-
-// getFeatures safely gets the Features struct, initializing it if it is nil.
-func getFeatures(features **structs.Features) *structs.Features {
-	if *features == nil {
-		*features = &structs.Features{}
-	}
-	return *features
+	return ""
 }
