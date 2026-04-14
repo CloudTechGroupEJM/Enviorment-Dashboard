@@ -14,7 +14,7 @@ Parameters:
   - router: *http.ServeMux - The HTTP request multiplexer to register handlers with
 */
 func SetupAllHandlers(router *http.ServeMux, client *firestore.Client) {
-	authHandler(router)
+	InitAuthentication(router, client)
 	InitRegistration(router,client)
 	notificationsHandler(router)
 	StatusRouter(router)

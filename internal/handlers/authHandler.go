@@ -1,7 +1,10 @@
 package handlers
 
-import "net/http"
+import (
+    "net/http"
+    "cloud.google.com/go/firestore"
+)
 
-func authHandler(router *http.ServeMux) {
+func InitAuthentication(router *http.ServeMux, client *firestore.Client) {
 
 }
