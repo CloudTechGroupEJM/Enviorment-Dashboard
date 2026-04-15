@@ -1,4 +1,4 @@
-package services
+package notification
 
 import (
 	"context"
@@ -134,4 +134,3 @@ func TestSendWebhookPayload(t *testing.T) {
 		}
 	})
 }
-

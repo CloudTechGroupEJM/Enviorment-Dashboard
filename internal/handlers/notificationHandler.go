@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"envdash/internal/config"
-	"envdash/internal/services"
+	"envdash/internal/services/notification"
 	"envdash/internal/structs"
 	"errors"
 	"net/http"
@@ -34,8 +34,8 @@ type notificationServiceAPI interface {
 //
 // Returns:
 //   - *services.NotificationService: The initialized NotificationService instance used by the handlers
-func notificationsHandler(router *http.ServeMux, client *firestore.Client) *services.NotificationService {
-	service := services.NewNotificationService(client, nil)
+func notificationsHandler(router *http.ServeMux, client *firestore.Client) *notification.NotificationService {
+	service := notification.NewNotificationService(client, nil)
 	handler := &NotificationHandler{service: service}
 
 	router.HandleFunc(config.NOTIFICATION_PAGE_PATH, handler.handleNotifications)
@@ -157,5 +157,5 @@ func (handler *NotificationHandler) deleteNotification(writer http.ResponseWrite
 // Returns:
 //   - bool: true if the error is a "not found" error, false otherwise
 func isNotFound(err error) bool {
-	return errors.Is(err, services.ErrNotificationNotFound)
+	return errors.Is(err, notification.ErrNotificationNotFound)
 }
