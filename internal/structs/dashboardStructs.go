@@ -8,8 +8,8 @@ type DashboardResponse struct {
 }
 
 type Features struct {
-	Temperature      float64            `json:"temperature,omitempty"`
-	Precipitation    float64            `json:"precipitation,omitempty"`
+	Temperature      *float64           `json:"temperature,omitempty"`
+	Precipitation    *float64           `json:"precipitation,omitempty"`
 	AirQuality       *AqResponse        `json:"airQuality,omitempty"`
 	Capital          string             `json:"capital,omitempty"`
 	Coordinates      *CoordinateDetails `json:"coordinates,omitempty"`

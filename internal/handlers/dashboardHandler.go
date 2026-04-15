@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"envdash/internal/config"
 	"envdash/internal/services/dashboard"
+	"envdash/internal/structs"
 	"net/http"
+	"strings"
 
 	"cloud.google.com/go/firestore"
 )
@@ -19,10 +21,10 @@ var dashboardService *dashboard.DashBoardInternal
 // Parameters:
 //   - router: The HTTP router (ServeMux) where the dashboard paths will be registered.
 //   - client: The firestore client used for database operations.
-func DashboardRouter(router *http.ServeMux, client *firestore.Client) {
+func DashboardRouter(router *http.ServeMux, client *firestore.Client, dispatcher webhookDispatcher) {
 	dashboardService = dashboard.NewDashboardService(client)
 	// Register the dashboard endpoint. {p1} represents the path parameter (ID).
-	router.HandleFunc(config.DASHBOARDS_PAGE_PATH+"{p1}", dashboardHandler(dashboardService))
+	router.HandleFunc(config.DASHBOARDS_PAGE_PATH+"{p1}", dashboardHandler(dashboardService, dispatcher))
 }
 
 // dashboardHandler creates and returns an HTTP handler function for processing dashboard requests.
@@ -35,7 +37,7 @@ func DashboardRouter(router *http.ServeMux, client *firestore.Client) {
 // Returns:
 //   - http.HandlerFunc: A function that writes the dashboard JSON to the HTTP response,
 //     or returns appropriate HTTP error codes (405 Method Not Allowed, 400 Bad Request, 404 Not Found) if issues occur.
-func dashboardHandler(service *dashboard.DashBoardInternal) http.HandlerFunc {
+func dashboardHandler(service *dashboard.DashBoardInternal, dispatcher webhookDispatcher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Restrict to HTTP GET method only
 		if r.Method != http.MethodGet {
@@ -57,7 +59,43 @@ func dashboardHandler(service *dashboard.DashBoardInternal) http.HandlerFunc {
 		}
 
 		// Set the response Content-Type header and encode the retrieved struct into JSON
+		dispatchDashboardWebhooks(dashboardReceived, dispatcher)
 		w.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
 		json.NewEncoder(w).Encode(dashboardReceived)
+	}
+}
+
+// dispatchDashboardWebhooks is a helper function that dispatches webhooks based on the received dashboard data.
+// It checks for the presence of the dispatcher and the dashboard data, extracts the ISO code,
+// and dispatches lifecycle and threshold webhooks accordingly.
+//
+// Parameters:
+//   - dashboardReceived: The dashboard data received from the service layer.
+//   - dispatcher: The webhook dispatcher used to send notifications.
+func dispatchDashboardWebhooks(dashboardReceived *structs.DashboardResponse, dispatcher webhookDispatcher) {
+	if dispatcher == nil || dashboardReceived == nil {
+		return
+	}
+
+	isoCode := strings.ToUpper(strings.TrimSpace(dashboardReceived.IsoCode))
+	if isoCode == "" {
+		return
+	}
+
+	dispatcher.DispatchLifecycleAsync(isoCode, structs.NotificationEventInvoke)
+
+	if dashboardReceived.Features == nil {
+		return
+	}
+
+	if dashboardReceived.Features.AirQuality != nil {
+		dispatcher.DispatchThresholdAsync(isoCode, "pm25", dashboardReceived.Features.AirQuality.PM25)
+		dispatcher.DispatchThresholdAsync(isoCode, "pm10", dashboardReceived.Features.AirQuality.PM10)
+	}
+	if dashboardReceived.Features.Temperature != nil {
+		dispatcher.DispatchThresholdAsync(isoCode, "temperature", *dashboardReceived.Features.Temperature)
+	}
+	if dashboardReceived.Features.Precipitation != nil {
+		dispatcher.DispatchThresholdAsync(isoCode, "precipitation", *dashboardReceived.Features.Precipitation)
 	}
 }

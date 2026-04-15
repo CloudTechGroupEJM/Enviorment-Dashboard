@@ -1,5 +1,17 @@
 # Assignment 2
 
+## URLs
+- https://digredata.online/
+- http://10.212.173.183:8080/ (VPN required)
+
+## Endpoints
+```
+<url>/envdash/v1/status/
+<url>/envdash/v1/registrations/
+<url>/envdash/v1/notifications/
+<url>/envdash/v1/dashboards/
+```
+
 ## Run and start the application
 ### Requirements
 - Docker

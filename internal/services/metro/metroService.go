@@ -33,8 +33,8 @@ func (mi *MetroInternal) GetMetro(ctx context.Context, lat float64, lon float64)
 	}
 
 	return &structs.MetroResponse{
-		MeanTemperature:   roundOneDeci(meanTemp),
-		MeanPrecipitation: roundOneDeci(meanPrecip),
+		MeanTemperature:   meanTemp,
+		MeanPrecipitation: meanPrecip,
 	}, nil
 }
 
