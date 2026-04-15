@@ -3,6 +3,7 @@ package status
 import (
 	"envdash/internal/client/status"
 	"envdash/internal/config"
+	"envdash/internal/services/notification"
 	"envdash/internal/structs"
 	"fmt"
 	"net/http"
@@ -39,8 +40,8 @@ func (s *StatusInternal) GetStatus() *structs.StatusResponse {
 		AqAPI:        healthStatus["openaq"],
 		Nominatim:    healthStatus["nominatim"],
 		CurrencyAPI:  healthStatus["currency"],
-		Db_noti:      0, //todo implement status of the firestore instance
-		Webhooks:     0, //todo implement
+		Db_noti:      0,                                   //todo implement status of the firestore instance
+		Webhooks:     notification.GetNotificationCount(), //todo implement
 		Version:      config.APPLICATION_VERSION,
 		Uptime:       fmt.Sprintf("%.f", time.Since(s.startTime).Seconds()),
 	}

@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"envdash/internal/services"
+	"envdash/internal/services/notification"
 	"envdash/internal/structs"
 	"errors"
 	"net/http"
@@ -80,7 +80,7 @@ func TestNotificationHandler(t *testing.T) {
 				return "", errors.New("unused")
 			},
 			getFn: func(ctx context.Context, id string) (*structs.NotificationRegistration, error) {
-				return nil, services.ErrNotificationNotFound
+				return nil, notification.ErrNotificationNotFound
 			},
 			listFn: func(ctx context.Context) ([]structs.NotificationRegistration, error) {
 				return nil, errors.New("unused")
@@ -130,4 +130,3 @@ func TestNotificationHandler(t *testing.T) {
 		}
 	})
 }
-
