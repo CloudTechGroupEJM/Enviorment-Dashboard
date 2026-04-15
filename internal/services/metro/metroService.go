@@ -26,12 +26,9 @@ func (mi *MetroInternal) GetMetro(lat float64, lon float64) (*structs.MetroRespo
 		return nil, err
 	}
 
-	//Fields are string, as they are not used for anything after
-	//If they are round with math.Round(val * 100) / 100, and change to fields to float
-	//If tests are hard: change back to float
 	return &structs.MetroResponse{
-		MeanTemperature:   fmt.Sprintf("%.2f", meanTemp),
-		MeanPrecipitation: fmt.Sprintf("%.2f", meanPrecip),
+		MeanTemperature:   meanTemp,
+		MeanPrecipitation: meanPrecip,
 	}, nil
 }
 

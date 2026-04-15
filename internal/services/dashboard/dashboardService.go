@@ -197,8 +197,10 @@ func buildDashboard(
 	req := reg.Features
 
 	if metro != nil {
-		feats.Temperature = metro.MeanTemperature
-		feats.Precipitation = metro.MeanPrecipitation
+		temp := metro.MeanTemperature
+		precip := metro.MeanPrecipitation
+		feats.Temperature = &temp
+		feats.Precipitation = &precip
 	}
 	if aq != nil {
 		feats.AirQuality = aq
