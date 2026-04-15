@@ -59,6 +59,10 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 		return "", "" ,errors.New("isoCode already exists in registration collection")
 	}
 
+	if len(registration.Features.TargetCurrencies) == 0{
+		return "", "" ,errors.New("TargetCurrencies cant be empty, each country has a currency")
+	}
+
 	registrationDoc := service.client.Collection(store.REGISTRATIONCOLLECTION).NewDoc()
 	registration.ID = registrationDoc.ID
 

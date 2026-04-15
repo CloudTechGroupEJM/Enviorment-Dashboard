@@ -1,23 +1,26 @@
 package services
 
 import (
-    "context"
-    "crypto/rand"
-    "encoding/hex"
-    "envdash/internal/store"
-    "envdash/internal/structs"
-    "errors"
-    "strings"
-    "time"
+	"context"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"envdash/internal/store"
+	"envdash/internal/structs"
+	"envdash/internal/utils"
+	"errors"
+	"strings"
+	"time"
 
-    "cloud.google.com/go/firestore"
+	"cloud.google.com/go/firestore"
 )
 
 // APIKeyService handles all API key operations
 // Fields:
 //   - firestoreClient: Reference to Firestore database client
 type APIKeyService struct {
-    firestoreClient *firestore.Client
+    client *firestore.Client
 }
 
 // NewAPIKeyService creates and returns a new APIKeyService instance
@@ -28,12 +31,12 @@ type APIKeyService struct {
 // Returns:
 //   - *APIKeyService: Initialized service instance
 //   - Panics if firestoreClient is nil
-func NewAPIKeyService(firestoreClient *firestore.Client) *APIKeyService {
-    if firestoreClient == nil {
+func NewAPIKeyService(client *firestore.Client) *APIKeyService {
+    if client == nil {
         panic("firestore client cannot be nil")
     }
     return &APIKeyService{
-        firestoreClient: firestoreClient,
+        client: client,
     }
 }
 
@@ -49,20 +52,33 @@ func NewAPIKeyService(firestoreClient *firestore.Client) *APIKeyService {
 func (apiKeyService *APIKeyService) RegisterNewClient(ctx context.Context, registrationData structs.APIKeyRegistration) (*structs.APIKeyResponse, error) {
     // Validate input fields
     if strings.TrimSpace(registrationData.Name) == "" {
-        return nil, errors.New("Missing required field: name")
+        return nil, errors.New("missing required field: name")
     }
     if strings.TrimSpace(registrationData.Email) == "" {
-        return nil, errors.New("Missing required field: email")
+        return nil, errors.New("missing required field: email")
     }
 
-    // Generate API key
+    // Validate email format
+    if emailValidationError := utils.ValidateEmailFormat(registrationData.Email); emailValidationError != nil {
+        return nil, emailValidationError
+    }
+
+    
+    // Check if email already exists in database
+    emailExistsInDatabase, emailCheckError := apiKeyService.emailExists(ctx, registrationData.Email)
+    if emailCheckError != nil {
+        return nil, emailCheckError
+    }
+    if emailExistsInDatabase {
+        return nil, errors.New("email already registered and has an active API key")
+    }
+
     generatedAPIKey := generateAPIKey()
     
-    // Get current timestamp
     currentTimestamp := time.Now().Format("20060102 15:04")
 
-    // Create Firestore document
-    newDocumentReference := apiKeyService.firestoreClient.Collection(store.APIKEYCOLLECTION).NewDoc()
+    // Create doc
+    newDocumentReference := apiKeyService.client.Collection(store.APIKEYCOLLECTION).NewDoc()
     apiKeyStoreData := structs.APIKeyStoreModel{
         ID:        newDocumentReference.ID,
         Key:       generatedAPIKey,
@@ -78,7 +94,6 @@ func (apiKeyService *APIKeyService) RegisterNewClient(ctx context.Context, regis
         return nil, writeError
     }
 
-    // Return response to client
     apiKeyResponseData := &structs.APIKeyResponse{
         Key:       generatedAPIKey,
         CreatedAt: currentTimestamp,
@@ -87,23 +102,32 @@ func (apiKeyService *APIKeyService) RegisterNewClient(ctx context.Context, regis
     return apiKeyResponseData, nil
 }
 
-// generateAPIKey creates a random API key with the format: sk-envdash-{16-char-hex}
+// generateAPIKey creates a unique API key using HMAC-SHA256
+// Format: sk-envdash-{64-char-hex-hash}
 //
 // Returns:
 //   - string: Generated API key
 func generateAPIKey() string {
     keyPrefix := "sk-envdash-"
-    randomBytesLength := 8
+    
+    randomBytesLength := 16
     randomBytes := make([]byte, randomBytesLength)
     
     _, readError := rand.Read(randomBytes)
     if readError != nil {
-        // Fallback to timestamp-based key if random generation fails
-        return keyPrefix + time.Now().Format("20060102150405")
+        // Fallback to timestamp
+        randomBytes = []byte(time.Now().String())
     }
-
-    hexEncodedRandomString := hex.EncodeToString(randomBytes)
-    return keyPrefix + hexEncodedRandomString
+    
+    secretKeyForHmac := []byte(time.Now().String())
+    hmacHasher := hmac.New(sha256.New, secretKeyForHmac)
+    hmacHasher.Write(randomBytes)
+    
+    hashSum := hmacHasher.Sum(nil)
+    
+    hexEncodedHash := hex.EncodeToString(hashSum)
+    
+    return keyPrefix + hexEncodedHash[:32]
 }
 
 // ValidateAPIKey checks if the provided key is valid and active
@@ -117,7 +141,7 @@ func generateAPIKey() string {
 //   - bool: true if key exists and is active
 //   - error: Firestore query error
 func (apiKeyService *APIKeyService) ValidateAPIKey(ctx context.Context, apiKeyToValidate string) (*structs.APIKeyStoreModel, bool, error) {
-    querySnapshot := apiKeyService.firestoreClient.Collection(store.APIKEYCOLLECTION).
+    querySnapshot := apiKeyService.client.Collection(store.APIKEYCOLLECTION).
         Where("key", "==", apiKeyToValidate).
         Documents(ctx)
 
@@ -126,7 +150,7 @@ func (apiKeyService *APIKeyService) ValidateAPIKey(ctx context.Context, apiKeyTo
         return nil, false, queryError
     }
 
-    // No document found with this key
+    // No document found
     if len(retrievedDocuments) == 0 {
         return nil, false, nil
     }
@@ -158,7 +182,7 @@ func (apiKeyService *APIKeyService) ValidateAPIKey(ctx context.Context, apiKeyTo
 // Returns:
 //   - error: Firestore error or "key not found" error
 func (apiKeyService *APIKeyService) RevokeAPIKey(ctx context.Context, apiKeyToRevoke string) error {
-    querySnapshot := apiKeyService.firestoreClient.Collection(store.APIKEYCOLLECTION).
+    querySnapshot := apiKeyService.client.Collection(store.APIKEYCOLLECTION).
         Where("key", "==", apiKeyToRevoke).
         Documents(ctx)
 
@@ -193,7 +217,7 @@ func (apiKeyService *APIKeyService) RevokeAPIKey(ctx context.Context, apiKeyToRe
 func (apiKeyService *APIKeyService) UpdateLastUsedTimestamp(ctx context.Context, apiKeyDocumentID string) error {
     currentTimestamp := time.Now().Format("20060102 15:04:05")
     
-    documentReference := apiKeyService.firestoreClient.Collection(store.APIKEYCOLLECTION).Doc(apiKeyDocumentID)
+    documentReference := apiKeyService.client.Collection(store.APIKEYCOLLECTION).Doc(apiKeyDocumentID)
     _, updateError := documentReference.Update(ctx, []firestore.Update{
         {
             Path:  "lastUsed",
@@ -202,4 +226,29 @@ func (apiKeyService *APIKeyService) UpdateLastUsedTimestamp(ctx context.Context,
     })
 
     return updateError
+}
+
+
+// emailExists checks if an email already has an active API key registered
+//
+// Parameters:
+//   - ctx: Context for database operation
+//   - emailAddressToCheck: The email to check for existing registration
+//
+// Returns:
+//   - bool: true if email exists and is active
+//   - error: Firestore query error
+func (apiKeyService *APIKeyService) emailExists(ctx context.Context, emailAddressToCheck string) (bool, error) {
+    querySnapshot := apiKeyService.client.Collection(store.APIKEYCOLLECTION).
+        Where("email", "==", emailAddressToCheck).
+        Where("isActive", "==", true).
+        Documents(ctx)
+
+    retrievedDocuments, queryError := querySnapshot.GetAll()
+    if queryError != nil {
+        return false, queryError
+    }
+
+    // If any documents found, email already exists
+    return len(retrievedDocuments) > 0, nil
 }

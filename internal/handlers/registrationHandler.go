@@ -22,13 +22,18 @@ type RegistrationHandler struct {
 // InitRegistration initializes the registration service, handler and endpoints.
 // Parameters: router - HTTP router, client - Firestore client
 func InitRegistration(router *http.ServeMux, client *firestore.Client) {
+	apiKeyServiceInstance := services.NewAPIKeyService(client)
 	service := services.NewRegistrationService(client)
 	handler := &RegistrationHandler{
 		service: service,
 	}
 
-	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH, handler.handleRegistrations)
-	router.HandleFunc(config.REGISTRATIONS_PAGE_PATH+"{id}", handler.handleRegistrations)
+	// Protected routes (with middleware)
+  router.HandleFunc(config.REGISTRATIONS_PAGE_PATH, 
+        ProtectedRouteMiddleware(handler.handleRegistrations, apiKeyServiceInstance, client))
+  router.HandleFunc(config.REGISTRATIONS_PAGE_PATH+"{id}", 
+        ProtectedRouteMiddleware(handler.handleRegistrations, apiKeyServiceInstance, client))
+	
 }
 
 // handleRegistrations routes HTTP requests to appropriate handler methods based on request type.

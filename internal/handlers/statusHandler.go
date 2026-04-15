@@ -19,6 +19,7 @@ func init() {
 // StatusRouter
 // Routes to the statusHandler with the application-wide status service
 func StatusRouter(router *http.ServeMux) {
+
 	router.HandleFunc(config.STATUS_PAGE_PATH, statusHandler(statusService))
 }
 

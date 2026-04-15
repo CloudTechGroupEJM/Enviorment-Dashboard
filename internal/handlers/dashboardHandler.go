@@ -11,6 +11,7 @@ import (
 // todo: fix to work with the configuration of dashboard
 var dashboardService *dashboard.DashBoardInternal
 
+
 func init() {
 	dashboardService = dashboard.NewDashboardService()
 }
