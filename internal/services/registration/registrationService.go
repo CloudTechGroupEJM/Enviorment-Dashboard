@@ -6,11 +6,14 @@ import (
 	"envdash/internal/structs"
 	"envdash/internal/utils"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const DATE_FORMAT = "20060102 15:04:05"
@@ -107,8 +110,8 @@ func (service *RegistrationService) GetAll(ctx context.Context) ([]map[string]in
 //   - error: error if not found or query fails
 func (service *RegistrationService) GetByID(ctx context.Context, registrationID string) (*structs.RegisterCountry, error) {
 	registrationSnapshot, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
-	if registrationErr != nil {
-		return nil, registrationErr
+	if status.Code(registrationErr) == codes.NotFound {
+		return nil, fmt.Errorf("Registration with id %q not found", registrationID)
 	}
 
 	// Create an empty struct and use DataTo to populate it

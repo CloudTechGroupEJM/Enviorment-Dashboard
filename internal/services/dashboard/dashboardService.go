@@ -68,7 +68,7 @@ func NewDashboardService(client *firestore.Client) *DashBoardInternal {
 func (d *DashBoardInternal) GetDashboard(ctx context.Context, id string) (*structs.DashboardResponse, error) {
 	reg, err := d.firebase.GetByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("loading registration %s: %w", id, err)
+		return nil, err
 	}
 	feat := reg.Features
 

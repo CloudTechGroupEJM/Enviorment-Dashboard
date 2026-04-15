@@ -105,7 +105,7 @@ func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter,
 		return
 	}
 
-	singleRegistration, registrationErr := handler.service.GetByID(request.PathValue("id"), request.Context())
+	singleRegistration, registrationErr := handler.service.GetByID(request.Context(), request.PathValue("id"))
 
 	if registrationErr != nil {
 		log.Printf("Error retrieving registration %s: %v", request.PathValue("id"), registrationErr)
