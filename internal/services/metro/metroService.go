@@ -42,7 +42,7 @@ func (mi *MetroInternal) GetMetro(ctx context.Context, lat float64, lon float64)
 func (mi *MetroInternal) processMetroData(ctx context.Context, latitude float64, longitude float64) (float64, float64, error) {
 	metroData, err := mi.client.FetchMetroData(ctx, latitude, longitude)
 	if err != nil {
-		return 0, 0, fmt.Errorf("computing metro means: %w", err)
+		return 0, 0, fmt.Errorf("fetching metro data: %w", err)
 	}
 
 	if len(metroData.Daily.Temperature2mMean) == 0 {
