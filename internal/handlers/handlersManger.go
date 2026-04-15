@@ -17,5 +17,5 @@ func SetupAllHandlers(router *http.ServeMux, client *firestore.Client) {
 	dispatcher := notificationsHandler(router, client)
 	InitRegistration(router, client, dispatcher)
 	StatusRouter(router)
-	DashboardRouter(router, dispatcher)
+	DashboardRouter(router, client)
 }

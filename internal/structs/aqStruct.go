@@ -22,7 +22,7 @@ type LatestIncoming struct {
 	} `json:"results"`
 }
 
-// Represents the outgoing air quality data in the dashboard response
+// Represents the outgoing air quality data to be used in dashboard response
 type AqResponse struct {
 	PM25  float64 `json:"pm25"`
 	PM10  float64 `json:"pm10"`

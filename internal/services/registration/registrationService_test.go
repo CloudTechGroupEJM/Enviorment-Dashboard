@@ -1,4 +1,4 @@
-package services
+package registration
 
 import (
 	"envdash/internal/structs"
@@ -76,7 +76,7 @@ func TestToUpdateFields(t *testing.T) {
 		"isoCode": "us",  // Valid 2-letter code
 	}
 	updates, err := toUpdateFields(dataUpdate)
-    assert.NoError(t, err)
+	assert.NoError(t, err)
 
 	assert.Len(t, updates, 2)
 

@@ -94,11 +94,11 @@ func requestAQ(url string) (*http.Request, error) {
 // openAqUrl
 // creates the url used to the sensors
 func openAqUrl(lat, lon float64) string {
-	urlCreated, _ := url.Parse(os.Getenv("OPEN_AQ_API_KEY") + "/locations")
+	urlCreated, _ := url.Parse(config.OPENAQ_API + "/locations")
 	q := urlCreated.Query()
 	q.Set("coordinates", fmt.Sprintf("%.4f,%.4f", lat, lon))
 	q.Set("radius", "25000")
-	q.Set("limit", "100")
+	q.Set("limit", "10")
 	urlCreated.RawQuery = q.Encode()
 	log.Println(urlCreated.String())
 	return urlCreated.String()
