@@ -8,6 +8,6 @@ type MetroAPIIncoming struct {
 }
 
 type MetroResponse struct {
-	MeanTemperature   string
-	MeanPrecipitation string
+	MeanTemperature   float64
+	MeanPrecipitation float64
 }
