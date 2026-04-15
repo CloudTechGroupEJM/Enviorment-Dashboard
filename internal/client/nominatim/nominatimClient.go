@@ -1,4 +1,4 @@
-package nominatimClient
+package nominatim
 
 import (
 	"context"

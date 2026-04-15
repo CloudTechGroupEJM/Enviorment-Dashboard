@@ -2,7 +2,7 @@ package nominatim
 
 import (
 	"context"
-	"envdash/internal/client/nominatimClient"
+	"envdash/internal/client/nominatim"
 	"envdash/internal/structs"
 	"fmt"
 	"math"
@@ -10,14 +10,14 @@ import (
 )
 
 type NomInternal struct {
-	client *nominatimClient.NomClient
+	client *nominatim.NomClient
 }
 
 // NewNomService
 // Creates and returns a new NomInternal service
 func NewNomService() *NomInternal {
 	return &NomInternal{
-		client: nominatimClient.NewNomClient(),
+		client: nominatim.NewNomClient(),
 	}
 }
 
