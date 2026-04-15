@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"envdash/internal/config"
 	"envdash/internal/services/status"
+	"log"
 	"net/http"
 	"time"
 )
@@ -32,9 +33,20 @@ func statusHandler(service *status.StatusInternal) http.HandlerFunc {
 			return
 		}
 
-		//go to service layer to get status
+		// go to service layer to get status
 		statusEndpoints := service.GetStatus()
+
+		// Encode to memory first
+		encodedData, err := json.Marshal(statusEndpoints)
+		if err != nil {
+			log.Printf("JSON Marshal error: %v", err)
+			//Return internal server error if marshalling fails
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		// Only set headers and write if encoding was successful
 		w.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
-		json.NewEncoder(w).Encode(statusEndpoints)
+		w.Write(encodedData)
 	}
 }

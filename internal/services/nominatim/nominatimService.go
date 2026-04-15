@@ -1,7 +1,8 @@
 package nominatim
 
 import (
-	"envdash/internal/client/nominatimClient"
+	"context"
+	"envdash/internal/client/nominatim"
 	"envdash/internal/structs"
 	"fmt"
 	"math"
@@ -9,25 +10,25 @@ import (
 )
 
 type NomInternal struct {
-	client *nominatimClient.NomClient
+	client *nominatim.NomClient
 }
 
 // NewNomService
 // Creates and returns a new NomInternal service
 func NewNomService() *NomInternal {
 	return &NomInternal{
-		client: nominatimClient.NewNomClient(),
+		client: nominatim.NewNomClient(),
 	}
 }
 
-// GetCapitalCords
+// GetCapitalCoords
 // Retrieves coordinates for the given capital city
-func (ni *NomInternal) GetCapitalCords(capital string) (*structs.NomResponse, error) {
+func (ni *NomInternal) GetCapitalCoords(ctx context.Context, capital string) (*structs.NomResponse, error) {
 	if capital == "" {
 		return nil, fmt.Errorf("capital city name is empty")
 	}
 
-	incoming, err := ni.client.FetchCapitalCoords(capital)
+	incoming, err := ni.client.FetchCapitalCoords(ctx, capital)
 	if err != nil {
 		return nil, err
 	}
@@ -43,10 +44,9 @@ func (ni *NomInternal) GetCapitalCords(capital string) (*structs.NomResponse, er
 	}
 
 	return &structs.NomResponse{
-			Lat: roundTwoDeci(lat),
-			Lon: roundTwoDeci(lon),
-		},
-		nil
+		Lat: roundTwoDeci(lat),
+		Lon: roundTwoDeci(lon),
+	}, nil
 }
 
 func roundTwoDeci(value float64) float64 {

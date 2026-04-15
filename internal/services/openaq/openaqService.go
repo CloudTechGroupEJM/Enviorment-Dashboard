@@ -1,75 +1,82 @@
 package openaq
 
 import (
-	"envdash/internal/client/aq"
+	"context"
+	aqclient "envdash/internal/client/aq"
 	"envdash/internal/structs"
 	"log"
 	"math"
 )
 
+const (
+	maxLocations = 5 //locatoins used for sensor data
+	paramPM25    = "pm25"
+	paramPM10    = "pm10"
+)
+
 // AQInternal
 // The internal implementation of the aq service,
-// wrapping an HTTP client for air quality  calculation.
+// wrapping an HTTP client for air quality calculation.
 type AQInternal struct {
-	client *aq.AQClient
+	client *aqclient.AQClient
 }
 
 // NewAqService
 // returns a new AQInternal instance with a client
 func NewAqService() *AQInternal {
 	return &AQInternal{
-		client: aq.NewAQClient(),
+		client: aqclient.NewAQClient(),
 	}
 }
 
 // GetAQ
-// Fetches air quality data for the given coordinates
+// Fetches air quality data for the given coordinates.
 // lat/long -> associated sensors (max 5) -> fetch sensor data -> calculate PM2.5/PM10 means -> EPA level
-// Returns AqResponse with rounded PM values and EPA air quality category
-func (aqI *AQInternal) GetAQ(lat, long float64) (*structs.AqResponse, error) {
-	locations, err := aqI.client.FetchSensors(lat, long)
+// Returns AqResponse with rounded PM values and EPA air quality category.
+func (aqI *AQInternal) GetAQ(ctx context.Context, lat, long float64) (*structs.AqResponse, error) {
+	locations, err := aqI.client.FetchSensors(ctx, lat, long)
 	if err != nil {
 		return nil, err
 	}
 
-	// Build sensor ID → parameter name map from locations
 	sensorParams := buildSensorMap(locations)
+	locationIDs := pickLocationIDs(locations, maxLocations)
 
-	// Get location IDs (max 5)
-	locationIDs := make([]int, 0)
-	for _, loc := range locations.Results {
-		if len(locationIDs) >= 5 {
-			break
-		}
-		locationIDs = append(locationIDs, loc.ID)
-	}
+	pm25Values, pm10Values := aqI.aggregateAirQualityData(ctx, locationIDs, sensorParams)
 
-	// Aggregate data from all locations
-	pm25Values, pm10Values := aqI.aggregateAirQualityData(locationIDs, sensorParams)
-
-	// Calculate means
 	pm25 := meanAq(pm25Values)
 	pm10 := meanAq(pm10Values)
 
 	return &structs.AqResponse{
-		PM25:  math.Round(pm25*100) / 100,
-		PM10:  math.Round(pm10*100) / 100,
+		PM25:  roundTwoDeci(pm25),
+		PM10:  roundTwoDeci(pm10),
 		Level: epaLevel(pm25),
 	}, nil
 }
 
+// pickLocationIDs returns up to limit location IDs from the response.
+// calude inspired
+func pickLocationIDs(locations *structs.AirQualityIncoming, limit int) []int {
+	ids := make([]int, 0, limit)
+	for _, loc := range locations.Results {
+		if len(ids) >= limit {
+			break
+		}
+		ids = append(ids, loc.ID)
+	}
+	return ids
+}
+
 // aggregateAirQualityData fetches and aggregates PM2.5 and PM10 readings
-// from multiple sensor locations
-// claude assisted
+// from multiple sensor locations.
+// claude inspired
 func (aqI *AQInternal) aggregateAirQualityData(
+	ctx context.Context,
 	locationIDs []int,
 	sensorParams map[int]string,
 ) (pm25Values, pm10Values []float64) {
-
-	pm25Values, pm10Values = []float64{}, []float64{}
-
 	for _, locID := range locationIDs {
-		latest, err := aqI.client.FetchLatest(locID)
+		latest, err := aqI.client.FetchLatest(ctx, locID)
 		if err != nil {
 			log.Printf("skipping location %d: %v", locID, err)
 			continue
@@ -79,28 +86,25 @@ func (aqI *AQInternal) aggregateAirQualityData(
 			if result.Value <= 0 {
 				continue
 			}
-
-			paramName := sensorParams[result.SensorsID]
-
-			if paramName == "pm25" {
+			switch sensorParams[result.SensorsID] {
+			case paramPM25:
 				pm25Values = append(pm25Values, result.Value)
-			} else if paramName == "pm10" {
+			case paramPM10:
 				pm10Values = append(pm10Values, result.Value)
 			}
 		}
 	}
-
 	return pm25Values, pm10Values
 }
 
 // buildSensorMap
 // creates a sensor ID → parameter name mapping from locations
-// claude assisted
+// claude inspired
 func buildSensorMap(locations *structs.AirQualityIncoming) map[int]string {
 	sensorParams := make(map[int]string)
 	for _, loc := range locations.Results {
 		for _, sensor := range loc.Sensors {
-			if sensor.Parameter.Name == "pm25" || sensor.Parameter.Name == "pm10" {
+			if sensor.Parameter.Name == paramPM25 || sensor.Parameter.Name == paramPM10 {
 				sensorParams[sensor.ID] = sensor.Parameter.Name
 			}
 		}
@@ -119,6 +123,11 @@ func meanAq(values []float64) float64 {
 		sum += v
 	}
 	return sum / float64(len(values))
+}
+
+// roundTwoDeci rounds to 2 decimal places
+func roundTwoDeci(value float64) float64 {
+	return math.Round(value*100) / 100
 }
 
 // epaLevel
