@@ -1,8 +1,10 @@
 package country
 
 import (
+	"context"
 	"envdash/internal/client/country"
 	"envdash/internal/structs"
+	"fmt"
 )
 
 type CountryInternal struct {
@@ -19,21 +21,19 @@ func NewCountryService() *CountryInternal {
 }
 
 // GetCountry
-// Retrieves country information for the given country code
-// Returns the first country from the API response
-func (ci *CountryInternal) GetCountry(countryCode string) (*structs.IncomingCountry, error) {
-	countries, err := ci.processCountryData(countryCode)
+// Retrieves country information for the given two-letter country code.
+// Returns the first country from the API response.
+func (ci *CountryInternal) GetCountry(ctx context.Context, countryCode string) (*structs.IncomingCountry, error) {
+	if countryCode == "" {
+		return nil, fmt.Errorf("country code is required")
+	}
+
+	countries, err := ci.client.FetchCountryData(ctx, countryCode)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getting country %s: %w", countryCode, err)
 	}
 	if len(countries) == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("no country data returned for %s", countryCode)
 	}
 	return &countries[0], nil
-}
-
-// processCountryData
-// Receives country struct from external API
-func (ci *CountryInternal) processCountryData(countryCode string) ([]structs.IncomingCountry, error) {
-	return ci.client.FetchCountryData(countryCode)
 }
