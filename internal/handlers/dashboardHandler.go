@@ -65,6 +65,13 @@ func dashboardHandler(service *dashboard.DashBoardInternal, dispatcher webhookDi
 	}
 }
 
+// dispatchDashboardWebhooks is a helper function that dispatches webhooks based on the received dashboard data.
+// It checks for the presence of the dispatcher and the dashboard data, extracts the ISO code,
+// and dispatches lifecycle and threshold webhooks accordingly.
+//
+// Parameters:
+//   - dashboardReceived: The dashboard data received from the service layer.
+//   - dispatcher: The webhook dispatcher used to send notifications.
 func dispatchDashboardWebhooks(dashboardReceived *structs.DashboardResponse, dispatcher webhookDispatcher) {
 	if dispatcher == nil || dashboardReceived == nil {
 		return
