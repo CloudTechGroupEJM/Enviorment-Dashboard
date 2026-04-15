@@ -1,4 +1,4 @@
-package services
+package registration
 
 import (
 	"context"
@@ -44,9 +44,9 @@ func NewRegistrationService(client *firestore.Client) *RegistrationService {
 // Returns:
 //   - string: generated Firestore document ID on success
 //   - error: validation error, duplicate ISO code error, or Firestore error
-func (service *RegistrationService) Post(ctx context.Context, registration structs.RegisterCountry) (string, string ,error) {
+func (service *RegistrationService) Post(ctx context.Context, registration structs.RegisterCountry) (string, string, error) {
 	if validationErr := utils.Validation(&registration); validationErr != nil {
-		return "", "" ,validationErr
+		return "", "", validationErr
 	}
 
 	registration.LastChange = time.Now().Format(DATE_FORMAT)
@@ -56,7 +56,7 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 		return "", "", isoErr
 	}
 	if isoExists {
-		return "", "" ,errors.New("isoCode already exists in registration collection")
+		return "", "", errors.New("isoCode already exists in registration collection")
 	}
 
 	registrationDoc := service.client.Collection(store.REGISTRATIONCOLLECTION).NewDoc()
@@ -64,9 +64,9 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 
 	_, creationError := registrationDoc.Set(ctx, registration)
 	if creationError != nil {
-		return "", "" ,creationError
+		return "", "", creationError
 	}
-	return registrationDoc.ID, registration.LastChange ,nil
+	return registrationDoc.ID, registration.LastChange, nil
 }
 
 // GetAll retrieves all registrations from the Firestore collection.
@@ -103,14 +103,21 @@ func (service *RegistrationService) GetAll(ctx context.Context) ([]map[string]in
 //   - ctx: context for the operation
 //
 // Returns:
-//   - map[string]interface{}: registration document data on success
+//   - *structs.RegisterCountry: registration document data on success
 //   - error: error if not found or query fails
-func (service *RegistrationService) GetByID(registrationID string, ctx context.Context) (map[string]interface{}, error) {
-	registration, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
+func (service *RegistrationService) GetByID(registrationID string, ctx context.Context) (*structs.RegisterCountry, error) {
+	registrationSnapshot, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
 	if registrationErr != nil {
 		return nil, registrationErr
 	}
-	return registration.Data(), nil
+
+	// Create an empty struct and use DataTo to populate it
+	var registrationStruct structs.RegisterCountry
+	if err := registrationSnapshot.DataTo(&registrationStruct); err != nil {
+		return nil, err // Return an error if mapping fails
+	}
+
+	return &registrationStruct, nil
 }
 
 // DeleteAll removes all documents from the registrations collection.
@@ -166,7 +173,6 @@ func (service *RegistrationService) DeleteByID(registrationID string, ctx contex
 	return true, nil
 }
 
-
 // registrationExists checks if a registration document exists by its ID.
 //
 // Parameters:
@@ -211,7 +217,6 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 	return registrationID, registrationErr
 }
 
-
 // Patch performs a partial update of a registration document.
 //
 // Parameters:
@@ -245,7 +250,6 @@ func (service *RegistrationService) Patch(registrationID string, ctx context.Con
 
 	return nil
 }
-
 
 // toUpdateFields converts a map to Firestore Update objects for partial updates.
 //
@@ -303,7 +307,7 @@ func (service *RegistrationService) HeadAllRegistrations(ctx context.Context) (i
 //   - map[string]interface{}: registration document data on success
 //   - error: error if not found or query fails
 func (service *RegistrationService) HeadOneRegistration(registrationID string,
-	ctx context.Context) (map[string]interface{}, error) {
+	ctx context.Context) (*structs.RegisterCountry, error) {
 	registration, registrationErr := service.GetByID(registrationID, ctx)
 	if registrationErr != nil {
 		return nil, registrationErr
