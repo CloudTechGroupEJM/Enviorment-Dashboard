@@ -105,7 +105,7 @@ func (service *RegistrationService) GetAll(ctx context.Context) ([]map[string]in
 // Returns:
 //   - *structs.RegisterCountry: registration document data on success
 //   - error: error if not found or query fails
-func (service *RegistrationService) GetByID(registrationID string, ctx context.Context) (*structs.RegisterCountry, error) {
+func (service *RegistrationService) GetByID(ctx context.Context, registrationID string) (*structs.RegisterCountry, error) {
 	registrationSnapshot, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
 	if registrationErr != nil {
 		return nil, registrationErr
@@ -308,7 +308,7 @@ func (service *RegistrationService) HeadAllRegistrations(ctx context.Context) (i
 //   - error: error if not found or query fails
 func (service *RegistrationService) HeadOneRegistration(registrationID string,
 	ctx context.Context) (*structs.RegisterCountry, error) {
-	registration, registrationErr := service.GetByID(registrationID, ctx)
+	registration, registrationErr := service.GetByID(ctx, registrationID)
 	if registrationErr != nil {
 		return nil, registrationErr
 	}

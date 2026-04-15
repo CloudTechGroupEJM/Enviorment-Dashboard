@@ -9,8 +9,9 @@ import (
 	"envdash/internal/services/openaq"
 	"envdash/internal/services/registration"
 	"envdash/internal/structs"
-	"errors"
+	"fmt"
 	"log"
+	"sort"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -51,42 +52,46 @@ func NewDashboardService(client *firestore.Client) *DashBoardInternal {
 // GetDashboard retrieves a user's registered preferences and lazily fetches
 // only the required information to populate a cohesive dashboard response.
 //
+// Failure policy:
+//   - Foundational fetches (registration, country, geocoding) abort the request
+//     because downstream data depends on them.
+//   - Optional fetches (metro, air quality, currencies) degrade gracefully:
+//     errors are logged and the affected fields are simply omitted.
+//
 // Parameters:
-//   - id: The document ID of the user's registered dashboard in Firestore.
+//   - ctx: request context for cancellation and timeouts
+//   - id: the document ID of the user's registered dashboard in Firestore
 //
 // Returns:
-//   - *structs.DashboardResponse: The aggregated dashboard data struct.
-//   - error: Returns an error if the registration isn't found or critical initial data (like country info) is unavailable.
-func (d *DashBoardInternal) GetDashboard(id string) (*structs.DashboardResponse, error) {
-	// Fetch user specifications from the database
-	reg, err := d.firebase.GetByID(id, context.Background())
+//   - *structs.DashboardResponse: the aggregated dashboard data
+//   - error: if registration is not found or critical foundational data is unavailable
+func (d *DashBoardInternal) GetDashboard(ctx context.Context, id string) (*structs.DashboardResponse, error) {
+	reg, err := d.firebase.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("loading registration %s: %w", id, err)
 	}
 	feat := reg.Features
 
-	// Fetch base country data depending on requirements
-	countryData, err := d.fetchCountry(reg.IsoCode, feat)
+	countryData, err := d.fetchCountry(ctx, reg.IsoCode, feat)
 	if err != nil {
 		return nil, err
 	}
 
-	// Geocode the country's capital into coordinates if downstream data requires it
-	nomiData, err := d.fetchNominatim(countryData, feat)
+	nomiData, err := d.fetchNominatim(ctx, countryData, feat)
 	if err != nil {
 		return nil, err
 	}
 
-	// Concurrently independent fetches using retrieved foundational data (gracefully allowing nil returns)
-	metroData := d.fetchMetro(nomiData, feat)
-	aqData := d.fetchAirQuality(nomiData, feat)
-	currencies := d.fetchCurrencies(countryData, feat)
+	metroData := d.fetchMetro(ctx, nomiData, feat)
+	aqData := d.fetchAirQuality(ctx, nomiData, feat)
+	currencies := d.fetchCurrencies(ctx, countryData, feat)
 
-	// Build the final struct view based on the returned data
 	return buildDashboard(reg, countryData, nomiData, metroData, aqData, currencies), nil
 }
 
 // --- feature gates ---
+// Used to separate if a given registration actually needs to request from the external APIs.
+// If a feature is reliant on data from another api, both calls need to be made.
 
 // needsCountry determines if the country API must be called based on the requested features
 // and dependencies of downstream services.
@@ -102,18 +107,18 @@ func needsCoords(f structs.BoolFeature) bool {
 	return f.Coordinates || f.Temperature || f.Precipitation || f.AirQuality
 }
 
-// --- fetchers ---
-
 // fetchCountry makes an API call to the country service to get foundational country data
 // if the user requested fields that depend on it. Returns nil without error if unneeded.
-func (d *DashBoardInternal) fetchCountry(iso string, f structs.BoolFeature) (*structs.IncomingCountry, error) {
+func (d *DashBoardInternal) fetchCountry(ctx context.Context, iso string, f structs.BoolFeature) (*structs.IncomingCountry, error) {
 	if !needsCountry(f) {
 		return nil, nil
 	}
-	info, err := d.counSer.GetCountry(iso)
-	if err != nil || info == nil {
-		log.Printf("country lookup failed for %s: %v", iso, err)
-		return nil, errors.New("country not found")
+	info, err := d.counSer.GetCountry(ctx, iso)
+	if err != nil {
+		return nil, fmt.Errorf("country lookup for %s: %w", iso, err)
+	}
+	if info == nil {
+		return nil, fmt.Errorf("country %s not found", iso)
 	}
 	return info, nil
 }
@@ -121,28 +126,30 @@ func (d *DashBoardInternal) fetchCountry(iso string, f structs.BoolFeature) (*st
 // fetchNominatim geocodes the given country's capital city to absolute coordinates.
 // It is bypassed if coordinates aren't needed. It returns an error if geocoding fails
 // because sequential steps strictly depend on these parameters.
-func (d *DashBoardInternal) fetchNominatim(c *structs.IncomingCountry, f structs.BoolFeature) (*structs.NomResponse, error) {
+func (d *DashBoardInternal) fetchNominatim(ctx context.Context, c *structs.IncomingCountry, f structs.BoolFeature) (*structs.NomResponse, error) {
 	if !needsCoords(f) {
 		return nil, nil
 	}
 	if c == nil || len(c.Capital) == 0 {
-		return nil, errors.New("cannot geocode: missing capital")
+		return nil, fmt.Errorf("cannot geocode: missing capital")
 	}
-	info, err := d.nomSer.GetCapitalCords(c.Capital[0])
-	if err != nil || info == nil {
-		log.Printf("geocoding failed for %s: %v", c.Capital[0], err)
-		return nil, errors.New("geocoding failed")
+	info, err := d.nomSer.GetCapitalCoords(ctx, c.Capital[0])
+	if err != nil {
+		return nil, fmt.Errorf("geocoding %s: %w", c.Capital[0], err)
+	}
+	if info == nil {
+		return nil, fmt.Errorf("geocoding %s: no result", c.Capital[0])
 	}
 	return info, nil
 }
 
 // fetchMetro retrieves meteorological data (weather) using provided coordinates.
 // Failures to fetch this data are swallowed and logged, allowing for graceful partial degradation.
-func (d *DashBoardInternal) fetchMetro(n *structs.NomResponse, f structs.BoolFeature) *structs.MetroResponse {
+func (d *DashBoardInternal) fetchMetro(ctx context.Context, n *structs.NomResponse, f structs.BoolFeature) *structs.MetroResponse {
 	if n == nil || !(f.Temperature || f.Precipitation) {
 		return nil
 	}
-	info, err := d.metroSer.GetMetro(n.Lat, n.Lon)
+	info, err := d.metroSer.GetMetro(ctx, n.Lat, n.Lon)
 	if err != nil {
 		log.Printf("metro fetch failed: %v", err)
 		return nil
@@ -150,13 +157,13 @@ func (d *DashBoardInternal) fetchMetro(n *structs.NomResponse, f structs.BoolFea
 	return info
 }
 
-// fetchAirQuality retrieves localized air quality conditions using providing coordinates.
+// fetchAirQuality retrieves localized air quality conditions using provided coordinates.
 // Failures to fetch this data are swallowed and logged, returning nil.
-func (d *DashBoardInternal) fetchAirQuality(n *structs.NomResponse, f structs.BoolFeature) *structs.AqResponse {
+func (d *DashBoardInternal) fetchAirQuality(ctx context.Context, n *structs.NomResponse, f structs.BoolFeature) *structs.AqResponse {
 	if n == nil || !f.AirQuality {
 		return nil
 	}
-	info, err := d.aqSer.GetAQ(n.Lat, n.Lon)
+	info, err := d.aqSer.GetAQ(ctx, n.Lat, n.Lon)
 	if err != nil {
 		log.Printf("air quality fetch failed: %v", err)
 		return nil
@@ -166,11 +173,16 @@ func (d *DashBoardInternal) fetchAirQuality(n *structs.NomResponse, f structs.Bo
 
 // fetchCurrencies retrieves currency conversion info between a primary currency
 // and a list of target currencies. Failures are handled gracefully by returning nil.
-func (d *DashBoardInternal) fetchCurrencies(c *structs.IncomingCountry, f structs.BoolFeature) *structs.CurrencyResponse {
+func (d *DashBoardInternal) fetchCurrencies(ctx context.Context, c *structs.IncomingCountry, f structs.BoolFeature) *structs.CurrencyResponse {
 	if c == nil || len(f.TargetCurrencies) == 0 {
 		return nil
 	}
-	info, err := d.curSer.GetCurrency(firstCurrency(c.Currencies), f.TargetCurrencies)
+	base := firstCurrency(c.Currencies)
+	if base == "" {
+		log.Printf("currency fetch skipped: no base currency for country")
+		return nil
+	}
+	info, err := d.curSer.GetCurrency(ctx, base, f.TargetCurrencies)
 	if err != nil {
 		log.Printf("currency fetch failed: %v", err)
 		return nil
@@ -225,15 +237,22 @@ func buildDashboard(
 		Country:       reg.Name,
 		IsoCode:       reg.IsoCode,
 		Features:      feats,
-		LastRetrieval: time.Now().Format(time.DateTime),
+		LastRetrieval: time.Now().UTC().Format(time.RFC3339),
 	}
 }
 
-// firstCurrency extracts the first currency code found in a currency mapping.
-// Returns an empty string if the map is empty.
+// firstCurrency returns the alphabetically-first currency code from the map.
+// Sorting ensures deterministic output across calls — Go map iteration order
+// is randomized, so without this two requests for the same country could
+// pick different base currencies.
 func firstCurrency(m map[string]struct{}) string {
-	for code := range m {
-		return code
+	if len(m) == 0 {
+		return ""
 	}
-	return ""
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys[0]
 }
