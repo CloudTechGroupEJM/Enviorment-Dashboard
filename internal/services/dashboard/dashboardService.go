@@ -239,7 +239,7 @@ func buildDashboard(
 		Country:       reg.Name,
 		IsoCode:       reg.IsoCode,
 		Features:      feats,
-		LastRetrieval: time.Now().UTC().Format(time.RFC3339),
+		LastRetrieval: time.Now().UTC().Format("20060102 15:04"),
 	}
 }
 

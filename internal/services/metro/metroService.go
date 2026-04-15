@@ -53,8 +53,8 @@ func (mi *MetroInternal) processMetroData(ctx context.Context, latitude float64,
 	}
 
 	//round to one decimal for extra precision
-	meanTemp := calculateMean(metroData.Daily.Temperature2mMean)
-	meanPrecip := calculateMean(metroData.Daily.PrecipitationSum)
+	meanTemp := roundDeci(calculateMean(metroData.Daily.Temperature2mMean))
+	meanPrecip := roundDeci(calculateMean(metroData.Daily.PrecipitationSum))
 
 	return meanTemp, meanPrecip, nil
 }
@@ -84,7 +84,7 @@ func validateLatLong(lat, long float64) error {
 	return nil
 }
 
-// roundOneDeci rounds to 1 decimal place
-func roundOneDeci(value float64) float64 {
-	return math.Round(value*10) / 10
+// roundOneDeci rounds to 2 decimal place
+func roundDeci(value float64) float64 {
+	return math.Round(value*100) / 100
 }

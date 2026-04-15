@@ -5,6 +5,7 @@ import (
 	"envdash/internal/client/currency"
 	"envdash/internal/structs"
 	"fmt"
+	"strings"
 )
 
 // CurrencyInternal is the internal implementation of the currency service,
@@ -62,11 +63,13 @@ func filterRates(rates map[string]float64, target []string) map[string]float64 {
 	targetSet := make(map[string]struct{}, len(target))
 	for _, code := range target {
 		targetSet[code] = struct{}{}
+		targetSet[strings.ToUpper(code)] = struct{}{}
 	}
 
 	filtered := make(map[string]float64)
 	for code, rate := range rates {
-		if _, ok := targetSet[code]; ok {
+		upperCode := strings.ToUpper(code)
+		if _, ok := targetSet[upperCode]; ok {
 			filtered[code] = rate
 		}
 	}

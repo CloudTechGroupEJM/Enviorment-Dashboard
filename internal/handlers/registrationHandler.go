@@ -161,7 +161,7 @@ func (handler *RegistrationHandler) deleteAllRegistrations(writer http.ResponseW
 // Parameters:
 //   - writer - HTTP response writer, request - HTTP request with registration ID in the path
 func (handler *RegistrationHandler) deleteRegistrationByID(writer http.ResponseWriter, request *http.Request) {
-	registration, lookupErr := handler.service.GetByID(request.PathValue("id"), request.Context())
+	registrationLookup, lookupErr := handler.service.GetByID(request.Context(), request.PathValue("id"))
 	if lookupErr != nil {
 		http.Error(writer, "Error when trying to delete.", http.StatusOK)
 		log.Println("Deletion lookup error when deleting by ID")
@@ -175,7 +175,7 @@ func (handler *RegistrationHandler) deleteRegistrationByID(writer http.ResponseW
 		return
 	}
 	if deleted {
-		handler.dispatchLifecycleFromRegistration(registration, structs.NotificationEventDelete)
+		handler.dispatchLifecycleFromRegistration(registrationLookup, structs.NotificationEventDelete)
 		http.Error(writer, "registration has been deleted", http.StatusOK)
 		log.Println("registration with id " + request.PathValue("id") + " has been deleted")
 		return
@@ -295,7 +295,7 @@ func (handler *RegistrationHandler) dispatchLifecycleByID(ctx context.Context, r
 		return
 	}
 
-	registration, err := handler.service.GetByID(registrationID, ctx)
+	registration, err := handler.service.GetByID(ctx, registrationID)
 	if err != nil {
 		log.Printf("could not resolve registration %s for webhook dispatch: %v", registrationID, err)
 		return
