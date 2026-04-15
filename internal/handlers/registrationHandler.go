@@ -308,16 +308,30 @@ func (handler *RegistrationHandler) dispatchLifecycleByID(ctx context.Context, r
 // Parameters:
 //   - registration: map containing registration data, expected to have an "isoCode" field
 //   - event: lifecycle event type to dispatch (e.g., "register", "change", "delete")
-func (handler *RegistrationHandler) dispatchLifecycleFromRegistration(registration map[string]interface{}, event string) {
+func (handler *RegistrationHandler) dispatchLifecycleFromRegistration(registration any, event string) {
 	if handler.dispatcher == nil || registration == nil {
 		return
 	}
 
-	isoCode, ok := registration["isoCode"].(string)
+	isoCode, ok := extractISOCode(registration)
 	if !ok || strings.TrimSpace(isoCode) == "" {
 		log.Printf("skipping webhook dispatch for event %s: missing isoCode", event)
 		return
 	}
 
 	handler.dispatcher.DispatchLifecycleAsync(strings.ToUpper(strings.TrimSpace(isoCode)), event)
+}
+
+// extractISOCode supports the two registration payload shapes used in this handler:
+// map data from GetAll and struct data from GetByID.
+func extractISOCode(registration any) (string, bool) {
+	switch val := registration.(type) {
+	case map[string]interface{}:
+		isoCode, ok := val["isoCode"].(string)
+		return isoCode, ok
+	case *structs.RegisterCountry:
+		return val.IsoCode, true
+	default:
+		return "", false
+	}
 }
