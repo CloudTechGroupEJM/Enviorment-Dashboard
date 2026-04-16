@@ -2,6 +2,7 @@ package registration
 
 import (
 	"context"
+	"envdash/internal/config"
 	"envdash/internal/store"
 	"envdash/internal/structs"
 	"envdash/internal/utils"
@@ -16,7 +17,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const DATE_FORMAT = "20060102 15:04:05"
 
 type RegistrationService struct {
 	client *firestore.Client
@@ -52,7 +52,7 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 		return "", "", validationErr
 	}
 
-	registration.LastChange = time.Now().Format(DATE_FORMAT)
+	registration.LastChange = time.Now().Format(config.DATE_FORMAT)
 
 	isoExists, isoErr := service.isoCodeExists(ctx, registration.IsoCode)
 	if isoErr != nil {
@@ -60,6 +60,10 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 	}
 	if isoExists {
 		return "", "", errors.New("isoCode already exists in registration collection")
+	}
+
+	if len(registration.Features.TargetCurrencies) == 0{
+		return "", "" ,errors.New("TargetCurrencies cant be empty, each country has a currency")
 	}
 
 	registrationDoc := service.client.Collection(store.REGISTRATIONCOLLECTION).NewDoc()
@@ -211,7 +215,7 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 	if validationErr := utils.Validation(newRegistration); validationErr != nil {
 		return "", validationErr
 	}
-	newRegistration.LastChange = time.Now().Format(DATE_FORMAT)
+	newRegistration.LastChange = time.Now().Format(config.DATE_FORMAT)
 	_, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID).Set(ctx, newRegistration)
 	if registrationErr != nil {
@@ -239,7 +243,7 @@ func (service *RegistrationService) Patch(registrationID string, ctx context.Con
 	registration := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID)
 
-	dataUpdate["lastChange"] = time.Now().Format(DATE_FORMAT)
+	dataUpdate["lastChange"] = time.Now().Format(config.DATE_FORMAT)
 
 	updates, fieldsErr := toUpdateFields(dataUpdate)
 	if fieldsErr != nil {

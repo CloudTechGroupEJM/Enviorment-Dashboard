@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"context"
+	"envdash/internal/config"
 	"envdash/internal/services/country"
 	"envdash/internal/services/currency"
 	"envdash/internal/services/metro"
@@ -239,7 +240,7 @@ func buildDashboard(
 		Country:       reg.Name,
 		IsoCode:       reg.IsoCode,
 		Features:      feats,
-		LastRetrieval: time.Now().UTC().Format("20060102 15:04"),
+		LastRetrieval: time.Now().UTC().Format(config.DATE_FORMAT),
 	}
 }
 

@@ -11,6 +11,7 @@ const STATUS_PAGE_PATH = "/envdash/" + APPLICATION_VERSION + "/status/"
 const REGISTRATIONS_PAGE_PATH = "/envdash/" + APPLICATION_VERSION + "/registrations/"
 const DASHBOARDS_PAGE_PATH = "/envdash/" + APPLICATION_VERSION + "/dashboards/"
 const NOTIFICATION_PAGE_PATH = "/envdash/" + APPLICATION_VERSION + "/notifications/"
+const AUTH_PAGE_PATH = "/envdash/" + APPLICATION_VERSION + "/auth/"
 const SLASH = "/"
 
 // APIs
@@ -40,3 +41,7 @@ const PATH_NOMINATIM_SEARCH = "search?" // after the question mark comes the thi
 // Application information
 const HEADER_CONTENT_TYPE = "Content-Type"
 const APPLICATION_JSON = "application/json"
+
+// time format
+const DATE_FORMAT = "20060102 15:04:05"
+

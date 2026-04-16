@@ -4,6 +4,7 @@ package handlers
 import (
 	"encoding/json"
 	"envdash/internal/config"
+	"envdash/internal/services/apiKey"
 	"envdash/internal/services/dashboard"
 	"envdash/internal/structs"
 	"net/http"
@@ -21,10 +22,13 @@ var dashboardService *dashboard.DashBoardInternal
 // Parameters:
 //   - router: The HTTP router (ServeMux) where the dashboard paths will be registered.
 //   - client: The firestore client used for database operations.
-func DashboardRouter(router *http.ServeMux, client *firestore.Client, dispatcher webhookDispatcher) {
+func DashboardRouter(router *http.ServeMux, client *firestore.Client, dispatcher webhookDispatcher, apiKeyServiceInstance *apiKey.APIKeyService) {
 	dashboardService = dashboard.NewDashboardService(client)
 	// Register the dashboard endpoint. {p1} represents the path parameter (ID).
-	router.HandleFunc(config.DASHBOARDS_PAGE_PATH+"{p1}", dashboardHandler(dashboardService, dispatcher))
+
+	//protected
+	router.HandleFunc(config.DASHBOARDS_PAGE_PATH+"{id}", 
+        ProtectedRouteMiddleware(dashboardHandler(dashboardService, dispatcher), apiKeyServiceInstance, client))
 }
 
 // dashboardHandler creates and returns an HTTP handler function for processing dashboard requests.

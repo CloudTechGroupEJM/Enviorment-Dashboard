@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"envdash/internal/config"
 	"envdash/internal/store"
 	"envdash/internal/structs"
 	"errors"
@@ -247,7 +248,7 @@ func (service *NotificationService) DispatchLifecycle(ctx context.Context, count
 			ID:      registration.ID,
 			Country: normalizedCountry,
 			Event:   normalizedEvent,
-			Time:    time.Now().Format("20060102 15:04"),
+			Time:    time.Now().Format(config.DATE_FORMAT),
 		}
 
 		if sendErr := service.sendWebhookPayload(ctx, registration.URL, payload); sendErr != nil {
@@ -311,7 +312,7 @@ func (service *NotificationService) DispatchThreshold(ctx context.Context, count
 			ID:      registration.ID,
 			Country: normalizedCountry,
 			Event:   structs.NotificationEventThreshold,
-			Time:    time.Now().Format("20060102 15:04"),
+			Time:    time.Now().Format(config.DATE_FORMAT),
 			Details: &structs.ThresholdDispatchDetails{
 				Field:         normalizedField,
 				Operator:      registration.Threshold.Operator,
