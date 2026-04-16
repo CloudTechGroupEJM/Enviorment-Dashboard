@@ -12,8 +12,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type RegistrationService struct {
@@ -45,7 +43,7 @@ func NewRegistrationService(client *firestore.Client) *RegistrationService {
 // Returns:
 //   - string: generated Firestore document ID on success
 //   - error: validation error, duplicate ISO code error, or Firestore error
-func (service *RegistrationService) Post(ctx context.Context, registration structs.RegisterCountry, usedAPIKey string) (string, string, error) {
+func (service *RegistrationService) Post(ctx context.Context, registration structs.RegisterCountry, usedApiKey string) (string, string, error) {
 	if validationErr := utils.Validation(&registration); validationErr != nil {
 		return "", "", validationErr
 	}
@@ -61,7 +59,7 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 	}
 
 	if hasCountryName {
-		countryExists, countryErr := service.countryNameExistsForApiKey(ctx, registration.Name, usedAPIKey)
+		countryExists, countryErr := service.countryNameExistsForApiKey(ctx, registration.Name, usedApiKey)
 		if countryErr != nil {
 			return "", "", countryErr
 		}
@@ -72,7 +70,7 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 	}
 
 	if hasIsoCode {
-		isoExistsForApiKey, isoErr := service.isoCodeExistsForApiKey(ctx, registration.IsoCode, usedAPIKey)
+		isoExistsForApiKey, isoErr := service.isoCodeExistsForApiKey(ctx, registration.IsoCode, usedApiKey)
 		if isoErr != nil {
 			return "", "", isoErr
 		}
@@ -88,7 +86,7 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 
 	registrationDoc := service.client.Collection(store.REGISTRATIONCOLLECTION).NewDoc()
 	registration.ID = registrationDoc.ID
-	registration.ApiKeyID = usedAPIKey
+	registration.ApiKeyID = usedApiKey
 
 	_, creationError := registrationDoc.Set(ctx, registration)
 	if creationError != nil {
@@ -105,11 +103,11 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 // Returns:
 //   - []map[string]interface{}: slice of registration document maps on success
 //   - error: error if collection is empty or query fails
-func (service *RegistrationService) GetAll(ctx context.Context, usedAPIKey string) ([]structs.RegisterCountry, error) {
+func (service *RegistrationService) GetAll(ctx context.Context, usedApiKey string) ([]structs.RegisterCountry, error) {
 	var allRegistrations []structs.RegisterCountry
 
 	registrations, registrationsErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
-		Where("apiKeyID", "==", usedAPIKey).
+		Where("apiKeyID", "==", usedApiKey).
 		Documents(ctx).GetAll()
 	if registrationsErr != nil {
 		return nil, registrationsErr
@@ -140,9 +138,9 @@ func (service *RegistrationService) GetAll(ctx context.Context, usedAPIKey strin
 // Returns:
 //   - *structs.RegisterCountry: registration document data on success
 //   - error: error if not found or query fails
-func (service *RegistrationService) GetByID(ctx context.Context, registrationID string) (*structs.RegisterCountry, error) {
+func (service *RegistrationService) GetByID(ctx context.Context, registrationID string, usedApiKey string) (*structs.RegisterCountry, error) {
 	registrationSnapshot, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
-	if status.Code(registrationErr) == codes.NotFound {
+	if registrationErr != nil {
 		return nil, fmt.Errorf("Registration with id %q not found", registrationID)
 	}
 
@@ -151,6 +149,12 @@ func (service *RegistrationService) GetByID(ctx context.Context, registrationID 
 	if err := registrationSnapshot.DataTo(&registrationStruct); err != nil {
 		return nil, err
 	}
+	
+	// Verify the API key matches
+	if registrationStruct.ApiKeyID != usedApiKey {
+		return nil, errors.New("unauthorized: this registration belongs to a different API key")
+	}
+	
 	registrationStruct.ApiKeyID = ""
 
 	return &registrationStruct, nil
@@ -163,9 +167,9 @@ func (service *RegistrationService) GetByID(ctx context.Context, registrationID 
 //
 // Returns:
 //   - error: error if collection is empty or deletion fails
-func (service *RegistrationService) DeleteAll(ctx context.Context, usedAPIKey string) error {
+func (service *RegistrationService) DeleteAll(ctx context.Context, usedApiKey string) error {
 	registrations, registrationsErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
-		Where("apiKeyID", "==", usedAPIKey).
+		Where("apiKeyID", "==", usedApiKey).
 		Documents(ctx).GetAll()
 	if registrationsErr != nil {
 		return registrationsErr
@@ -237,7 +241,7 @@ func (service *RegistrationService) registrationExists(registrationID string, ct
 // Returns:
 //   - string: registration ID on success
 //   - error: validation error, not found error, or Firestore error
-func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry, registrationID string, ctx context.Context, usedAPIKey string) (string, error) {
+func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry, registrationID string, ctx context.Context, usedApiKey string) (string, error) {
 	// Get the document to verify it exists and API key matches
 	snapshot, err := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID).Get(ctx)
@@ -250,7 +254,7 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 	if err := snapshot.DataTo(&registration); err != nil {
 		return "", err
 	}
-	if registration.ApiKeyID != usedAPIKey {
+	if registration.ApiKeyID != usedApiKey {
 		return "", errors.New("unauthorized: this registration belongs to a different API key")
 	}
 
@@ -259,7 +263,7 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 	}
 	newRegistration.LastChange = time.Now().Format(config.DATE_FORMAT)
 	newRegistration.ID = registrationID
-	newRegistration.ApiKeyID = usedAPIKey
+	newRegistration.ApiKeyID = usedApiKey
 
 	_, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID).Set(ctx, newRegistration)
@@ -279,7 +283,7 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 // Returns:
 //   - error: not found error, validation error, or Firestore error
 func (service *RegistrationService) Patch(registrationID string, ctx context.Context,
-	dataUpdate map[string]any, usedAPIKey string) error {
+	dataUpdate map[string]any, usedApiKey string) error {
 
 	// Get the document to verify API key ownership
 	snapshot, err := service.client.Collection(store.REGISTRATIONCOLLECTION).
@@ -293,7 +297,7 @@ func (service *RegistrationService) Patch(registrationID string, ctx context.Con
 	if err := snapshot.DataTo(&registration); err != nil {
 		return err
 	}
-	if registration.ApiKeyID != usedAPIKey {
+	if registration.ApiKeyID != usedApiKey {
 		return errors.New("unauthorized: this registration belongs to a different API key")
 	}
 
@@ -347,13 +351,14 @@ func toUpdateFields(dataUpdate map[string]any) ([]firestore.Update, error) {
 // Returns:
 //   - int: total number of registrations
 //   - error: error if query fails
-func (service *RegistrationService) HeadAllRegistrations(ctx context.Context) (int, error) {
-	totalRegistrations, err := service.client.Collection(store.REGISTRATIONCOLLECTION).
+func (service *RegistrationService) HeadAllRegistrations(ctx context.Context, usedApiKey string) (int, error) {
+	registrations, err := service.client.Collection(store.REGISTRATIONCOLLECTION).
+		Where("apiKeyID", "==", usedApiKey).
 		Documents(ctx).GetAll()
 	if err != nil {
 		return 0, err
 	}
-	return len(totalRegistrations), nil
+	return len(registrations), nil
 }
 
 // HeadOneRegistration retrieves a single registration without modifying it (used for HEAD requests).
@@ -366,8 +371,8 @@ func (service *RegistrationService) HeadAllRegistrations(ctx context.Context) (i
 //   - map[string]interface{}: registration document data on success
 //   - error: error if not found or query fails
 func (service *RegistrationService) HeadOneRegistration(registrationID string,
-	ctx context.Context) (*structs.RegisterCountry, error) {
-	registration, registrationErr := service.GetByID(ctx, registrationID)
+	ctx context.Context, usedApiKey string) (*structs.RegisterCountry, error) {
+	registration, registrationErr := service.GetByID(ctx, registrationID, usedApiKey)
 	if registrationErr != nil {
 		return nil, registrationErr
 	}

@@ -66,8 +66,8 @@ func NewDashboardService(client *firestore.Client) *DashBoardInternal {
 // Returns:
 //   - *structs.DashboardResponse: the aggregated dashboard data
 //   - error: if registration is not found or critical foundational data is unavailable
-func (d *DashBoardInternal) GetDashboard(ctx context.Context, id string) (*structs.DashboardResponse, error) {
-	reg, err := d.firebase.GetByID(ctx, id)
+func (d *DashBoardInternal) GetDashboard(ctx context.Context, id string, usedApiKey string) (*structs.DashboardResponse, error) {
+	reg, err := d.firebase.GetByID(ctx, id, usedApiKey)
 	if err != nil {
 		return nil, err
 	}

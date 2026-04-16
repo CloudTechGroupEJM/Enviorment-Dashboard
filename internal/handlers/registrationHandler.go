@@ -87,7 +87,7 @@ func (handler *RegistrationHandler) createRegistration(writer http.ResponseWrite
 
 	writer.Header().Set(config.HEADER_CONTENT_TYPE, config.APPLICATION_JSON)
 	writer.WriteHeader(http.StatusCreated)
-	handler.dispatchLifecycleByID(request.Context(), registrationID, structs.NotificationEventRegister)
+	handler.dispatchLifecycleByID(request.Context(), registrationID, structs.NotificationEventRegister, request.Header.Get("x-api-key"))
 
 	_ = json.NewEncoder(writer).Encode(map[string]string{
 		"id":         registrationID,
@@ -116,7 +116,7 @@ func (handler *RegistrationHandler) getRegistrations(writer http.ResponseWriter,
 		return
 	}
 
-	singleRegistration, registrationErr := handler.service.GetByID(request.Context(), request.PathValue("id"))
+	singleRegistration, registrationErr := handler.service.GetByID(request.Context(), request.PathValue("id"), request.Header.Get("x-api-key"))
 
 	if registrationErr != nil {
 		log.Printf("Error retrieving registration %s: %v", request.PathValue("id"), registrationErr)
@@ -166,7 +166,7 @@ func (handler *RegistrationHandler) deleteAllRegistrations(writer http.ResponseW
 // Parameters:
 //   - writer - HTTP response writer, request - HTTP request with registration ID in the path
 func (handler *RegistrationHandler) deleteRegistrationByID(writer http.ResponseWriter, request *http.Request) {
-	registrationLookup, lookupErr := handler.service.GetByID(request.Context(), request.PathValue("id"))
+	registrationLookup, lookupErr := handler.service.GetByID(request.Context(), request.PathValue("id"), request.Header.Get("x-api-key"))
 	if lookupErr != nil {
 		http.Error(writer, "Error when trying to delete.", http.StatusOK)
 		log.Println("Deletion lookup error when deleting by ID")
@@ -214,7 +214,7 @@ func (handler *RegistrationHandler) putRegistration(writer http.ResponseWriter, 
 		}
 		log.Printf("registration %s fully replaced", replaceRegistrationErr)
 		writer.WriteHeader(http.StatusOK)
-		handler.dispatchLifecycleByID(request.Context(), registrationID, structs.NotificationEventChange)
+		handler.dispatchLifecycleByID(request.Context(), registrationID, structs.NotificationEventChange, request.Header.Get("x-api-key"))
 
 		_ = json.NewEncoder(writer).Encode(map[string]string{
 			"id":     registrationID,
@@ -251,7 +251,7 @@ func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter
 		http.Error(writer, patchErr.Error(), http.StatusBadRequest)
 		return
 	}
-	handler.dispatchLifecycleByID(request.Context(), request.PathValue("id"), structs.NotificationEventChange)
+	handler.dispatchLifecycleByID(request.Context(), request.PathValue("id"), structs.NotificationEventChange, request.Header.Get("x-api-key"))
 	_ = json.NewEncoder(writer).Encode(map[string]string{
 		"id":     request.PathValue("id"),
 		"status": "patched",
@@ -266,7 +266,7 @@ func (handler *RegistrationHandler) patchRegistration(writer http.ResponseWriter
 func (handler *RegistrationHandler) headRegistrations(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	if request.PathValue("id") == "" {
-		totalRegistrations, totalErr := handler.service.HeadAllRegistrations(request.Context())
+		totalRegistrations, totalErr := handler.service.HeadAllRegistrations(request.Context(), request.Header.Get("x-api-key"))
 		if totalErr != nil {
 			log.Printf("Error counting registrations: %v ", totalErr)
 			http.Error(writer, "Error retrieving data", http.StatusInternalServerError)
@@ -275,7 +275,7 @@ func (handler *RegistrationHandler) headRegistrations(writer http.ResponseWriter
 		writer.Header().Set("Registration-Count", strconv.Itoa(totalRegistrations))
 		http.Error(writer, "Retrieved total registration", http.StatusOK)
 	} else {
-		_, registrationErr := handler.service.HeadOneRegistration(request.PathValue("id"), request.Context())
+		_, registrationErr := handler.service.HeadOneRegistration(request.PathValue("id"), request.Context(), request.Header.Get("x-api-key"))
 		if registrationErr != nil {
 			log.Printf("Error retrieving registration %s: %v", request.PathValue("id"), registrationErr)
 			http.Error(writer, "Registration not found", http.StatusNotFound)
@@ -294,12 +294,12 @@ func (handler *RegistrationHandler) headRegistrations(writer http.ResponseWriter
 //   - ctx: context for the operation
 //   - registrationID: ID of the registration to retrieve and dispatch event for
 //   - event: lifecycle event type to dispatch (e.g., "register", "change", "delete")
-func (handler *RegistrationHandler) dispatchLifecycleByID(ctx context.Context, registrationID string, event string) {
+func (handler *RegistrationHandler) dispatchLifecycleByID(ctx context.Context, registrationID string, event string, usedApiKey string) {
 	if handler.dispatcher == nil || strings.TrimSpace(registrationID) == "" {
 		return
 	}
 
-	registration, err := handler.service.GetByID(ctx, registrationID)
+	registration, err := handler.service.GetByID(ctx, registrationID, usedApiKey)
 	if err != nil {
 		log.Printf("could not resolve registration %s for webhook dispatch: %v", registrationID, err)
 		return
