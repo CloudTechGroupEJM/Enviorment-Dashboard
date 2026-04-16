@@ -53,7 +53,7 @@ func NewAPIKeyService(client *firestore.Client) *APIKeyService {
 func (apiKeyService *APIKeyService) RegisterNewClient(ctx context.Context, registrationData structs.APIKeyRegistration) (*structs.APIKeyResponse, error) {
     // Validate input fields
     if strings.TrimSpace(registrationData.Name) == "" {
-        return nil, errors.New("missing required field: country")
+        return nil, errors.New("missing required field: name")
     }
     if strings.TrimSpace(registrationData.Email) == "" {
         return nil, errors.New("missing required field: email")
