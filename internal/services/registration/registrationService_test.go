@@ -72,7 +72,7 @@ func TestValidationIsoCodeTrimmed(t *testing.T) {
 
 func TestToUpdateFields(t *testing.T) {
 	dataUpdate := map[string]any{
-		"name":    "Usa", // Valid name
+		"name":    "usa", // Valid name
 		"isoCode": "us",  // Valid 2-letter code
 	}
 	updates, err := toUpdateFields(dataUpdate)
@@ -81,7 +81,7 @@ func TestToUpdateFields(t *testing.T) {
 	assert.Len(t, updates, 2)
 
 	assert.Equal(t, "name", updates[1].Path)
-	assert.Equal(t, "Usa", updates[1].Value)
+	assert.Equal(t, "usa", updates[1].Value)
 
 	assert.Equal(t, "isoCode", updates[0].Path)
 	assert.Equal(t, "US", updates[0].Value)

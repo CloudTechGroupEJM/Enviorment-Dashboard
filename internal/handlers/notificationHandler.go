@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"envdash/internal/config"
+	"envdash/internal/services/apiKey"
 	"envdash/internal/services/notification"
 	"envdash/internal/structs"
 	"errors"
@@ -34,12 +35,16 @@ type notificationServiceAPI interface {
 //
 // Returns:
 //   - *services.NotificationService: The initialized NotificationService instance used by the handlers
-func notificationsHandler(router *http.ServeMux, client *firestore.Client) *notification.NotificationService {
+func notificationsHandler(router *http.ServeMux, client *firestore.Client, apiKeyServiceInstance *apiKey.APIKeyService) *notification.NotificationService {
 	service := notification.NewNotificationService(client, nil)
 	handler := &NotificationHandler{service: service}
 
-	router.HandleFunc(config.NOTIFICATION_PAGE_PATH, handler.handleNotifications)
-	router.HandleFunc(config.NOTIFICATION_PAGE_PATH+"{id}", handler.handleNotifications)
+	// Protected routes (with middleware)
+	router.HandleFunc(config.NOTIFICATION_PAGE_PATH, 
+		ProtectedRouteMiddleware(handler.handleNotifications, apiKeyServiceInstance, client))
+	router.HandleFunc(config.NOTIFICATION_PAGE_PATH+"{id}", 
+		ProtectedRouteMiddleware(handler.handleNotifications, apiKeyServiceInstance, client))
+
 
 	return service
 }

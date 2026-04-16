@@ -5,7 +5,7 @@ package structs
 // Features (feature flags), LastChange (last update time)
 type RegisterCountry struct {
 	ID         string      `firestore:"id,omitempty" json:"id"`
-	Name       string      `firestore:"name" json:"name"`       //supposed to be "country"
+	Name       string      `firestore:"country" json:"country"`
 	IsoCode    string      `firestore:"isoCode" json:"isoCode"` // Fix this too if it has the typo
 	Features   BoolFeature `firestore:"features" json:"features"`
 	LastChange string      `firestore:"lastChange" json:"lastChange"`

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"envdash/internal/services/apiKey"
 	"net/http"
 
 	"cloud.google.com/go/firestore"
@@ -13,9 +14,11 @@ import (
 //   - router: *http.ServeMux - The HTTP request multiplexer to register handlers with
 //   - client: *firestore.Client - The Firestore client used by handlers that require database access
 func SetupAllHandlers(router *http.ServeMux, client *firestore.Client) {
-	authHandler(router)
-	dispatcher := notificationsHandler(router, client)
-	InitRegistration(router, client, dispatcher)
+	apiKeyServiceInstance := apiKey.NewAPIKeyService(client)
+	dispatcher := notificationsHandler(router, client, apiKeyServiceInstance)
+
+	InitAuthentication(router, client)
+	InitRegistration(router, client, dispatcher, apiKeyServiceInstance)
 	StatusRouter(router)
-	DashboardRouter(router, client, dispatcher)
+	DashboardRouter(router, client, dispatcher, apiKeyServiceInstance)
 }
