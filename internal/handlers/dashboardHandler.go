@@ -50,7 +50,7 @@ func dashboardHandler(service *dashboard.DashBoardInternal, dispatcher webhookDi
 		}
 
 		// Call the service layer to retrieve dashboard data using the "p1" path variable
-		dashboardReceived, err := service.GetDashboard(r.Context(), r.PathValue("p1"), r.Header.Get("x-api-key"))
+		dashboardReceived, err := service.GetDashboard(r.Context(), r.PathValue("id"), r.Header.Get("x-api-key"))
 		if err != nil {
 			http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
 			return

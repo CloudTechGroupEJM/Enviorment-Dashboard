@@ -18,6 +18,8 @@ type RegistrationService struct {
 	client *firestore.Client
 }
 
+const UN_AUTHORIZED = "unauthorized this registration belongs to a different API key"
+const REG_NOT_FOUND = "Registration not found"
 // NewRegistrationService creates a new RegistrationService instance.
 //
 // Parameters:
@@ -152,7 +154,7 @@ func (service *RegistrationService) GetByID(ctx context.Context, registrationID 
 	
 	// Verify the API key matches
 	if registrationStruct.ApiKeyID != usedApiKey {
-		return nil, errors.New("unauthorized: this registration belongs to a different API key")
+		return nil, errors.New(UN_AUTHORIZED)
 	}
 	
 	registrationStruct.ApiKeyID = ""
@@ -226,7 +228,7 @@ func (service *RegistrationService) registrationExists(registrationID string, ct
 	_, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID).Get(ctx)
 	if registrationErr != nil {
-		return errors.New("Registration not found")
+		return errors.New(REG_NOT_FOUND)
 	}
 	return nil
 }
@@ -246,7 +248,7 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 	snapshot, err := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID).Get(ctx)
 	if err != nil {
-		return "", errors.New("Registration not found")
+		return "", errors.New(REG_NOT_FOUND)
 	}
 
 	// Verify the API key matches
@@ -255,7 +257,7 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 		return "", err
 	}
 	if registration.ApiKeyID != usedApiKey {
-		return "", errors.New("unauthorized: this registration belongs to a different API key")
+		return "", errors.New(UN_AUTHORIZED)
 	}
 
 	if validationErr := utils.Validation(newRegistration); validationErr != nil {
@@ -289,7 +291,7 @@ func (service *RegistrationService) Patch(registrationID string, ctx context.Con
 	snapshot, err := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID).Get(ctx)
 	if err != nil {
-		return errors.New("Registration not found")
+		return errors.New(REG_NOT_FOUND)
 	}
 
 	// Verify the API key matches
@@ -298,7 +300,7 @@ func (service *RegistrationService) Patch(registrationID string, ctx context.Con
 		return err
 	}
 	if registration.ApiKeyID != usedApiKey {
-		return errors.New("unauthorized: this registration belongs to a different API key")
+		return errors.New(UN_AUTHORIZED)
 	}
 
 	// Now proceed with the update
