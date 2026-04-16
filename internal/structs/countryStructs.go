@@ -1,7 +1,7 @@
 package structs
 
 type IncomingCountry struct {
-	Name struct { //todo: dont think we need these, as you get both name and iso code from user in registration
+	Name struct {
 		Common string `json:"common"`
 	} `json:"name"`
 	IsoCode     string              `json:"cca2"`

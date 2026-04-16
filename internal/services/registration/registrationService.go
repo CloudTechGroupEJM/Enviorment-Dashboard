@@ -159,7 +159,11 @@ func (service *RegistrationService) GetByID(ctx context.Context, registrationID 
 	
 	registrationStruct.ApiKeyID = ""
 
-	return &registrationStruct, nil
+	var reg structs.RegisterCountry
+	if err := registrationSnapshot.DataTo(&reg); err != nil {
+		return nil, fmt.Errorf("decoding registration %q: %w", registrationID, err)
+	}
+	return &reg, nil
 }
 
 // DeleteAll removes all documents from the registrations collection.
