@@ -44,6 +44,7 @@ func validateName(name string) (string, error) {
 	if nameErr != nil {
 		return "", nameErr
 	}
+	name = strings.TrimSpace(name)
 	return name, nil
 }
 
@@ -61,6 +62,7 @@ func validateIsoCode(value string, field string, length int) (string, error) {
 	if isoCodeErr != nil {
 		return "", isoCodeErr
 	}
+	isoCode = strings.ReplaceAll(isoCode, " ", "")
 	if len(isoCode) != length {
 		return "", fmt.Errorf("%s must be %d letters", field, length)
 	}
