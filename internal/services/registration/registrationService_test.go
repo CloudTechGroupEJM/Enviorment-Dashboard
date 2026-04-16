@@ -22,50 +22,56 @@ func TestNewRegistrationServiceNilClient(t *testing.T) {
 	})
 }
 
-func TestValidationSuccess(t *testing.T) {
+func TestValidationBothProvided(t *testing.T) {
 	registration := &structs.RegisterCountry{
-		CountryName:    "Canada",
+		CountryName: "Canada",
+		IsoCode:     "ca",
+	}
+	err := utils.Validation(registration)
+	assert.NoError(t, err)
+	assert.Equal(t, "canada", registration.CountryName)
+	assert.Equal(t, "CA", registration.IsoCode)
+}
+
+func TestValidationOnlyCountryName(t *testing.T) {
+	registration := &structs.RegisterCountry{
+		CountryName: "Canada",
+	}
+	err := utils.Validation(registration)
+	assert.NoError(t, err)
+	assert.Equal(t, "canada", registration.CountryName)
+}
+
+func TestValidationOnlyIsoCode(t *testing.T) {
+	registration := &structs.RegisterCountry{
 		IsoCode: "ca",
 	}
-	err := utils.Validation(registration) // Changed from validation() to utils.Validation()
+	err := utils.Validation(registration)
 	assert.NoError(t, err)
 	assert.Equal(t, "CA", registration.IsoCode)
 }
 
-func TestValidationMissingName(t *testing.T) {
-	registration := &structs.RegisterCountry{
-		IsoCode: "ca",
-	}
-	err := utils.Validation(registration) // Changed
+func TestValidationBothMissing(t *testing.T) {
+	registration := &structs.RegisterCountry{}
+	err := utils.Validation(registration)
 	assert.Error(t, err)
-	assert.Equal(t, "missing required field: country", err.Error())
-}
-
-func TestValidationMissingIsoCode(t *testing.T) {
-	registration := &structs.RegisterCountry{
-		CountryName: "Canada",
-	}
-	err := utils.Validation(registration) // Changed
-	assert.Error(t, err)
-	assert.Equal(t, "missing required field: isoCode", err.Error())
+	assert.Equal(t, "at least one of name or isoCode must be provided", err.Error())
 }
 
 func TestValidationInvalidIsoCodeLength(t *testing.T) {
 	registration := &structs.RegisterCountry{
-		CountryName:    "Canada",
 		IsoCode: "can",
 	}
-	err := utils.Validation(registration) // Changed
+	err := utils.Validation(registration)
 	assert.Error(t, err)
-	assert.Equal(t, "isoCode must be 2 letters", err.Error()) // Changed from "two" to "2"
+	assert.Equal(t, "isoCode must be 2 letters", err.Error())
 }
 
 func TestValidationIsoCodeTrimmed(t *testing.T) {
 	registration := &structs.RegisterCountry{
-		CountryName:    "Canada",
 		IsoCode: "  ca  ",
 	}
-	err := utils.Validation(registration) // Changed
+	err := utils.Validation(registration)
 	assert.NoError(t, err)
 	assert.Equal(t, "CA", registration.IsoCode)
 }
