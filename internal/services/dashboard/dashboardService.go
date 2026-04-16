@@ -67,10 +67,10 @@ func NewDashboardService(client *firestore.Client) *DashBoardInternal {
 // Returns:
 //   - *structs.DashboardResponse: the aggregated dashboard data
 //   - error: if registration is not found or critical foundational data is unavailable
-func (d *DashBoardInternal) GetDashboard(ctx context.Context, id string) (*structs.DashboardResponse, error) {
+func (d *DashBoardInternal) GetDashboard(ctx context.Context, id string, usedApiKey string) (*structs.DashboardResponse, error) {
 	trimID := strings.TrimSpace(id)
+	reg, err := d.firebase.GetByID(ctx, trimID, usedApiKey)
 
-	reg, err := d.firebase.GetByID(ctx, trimID)
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +105,8 @@ func countryQuery(reg *structs.RegisterCountry) (string, error) {
 	if reg.IsoCode != "" {
 		return reg.IsoCode, nil
 	}
-	if reg.Name != "" {
-		return reg.Name, nil
+	if reg.CountryName != "" {
+		return reg.CountryName, nil
 	}
 	return "", fmt.Errorf("registration has neither iso code nor country name")
 }
