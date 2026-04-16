@@ -143,7 +143,7 @@ func validateTargetCurrencies(oldCurrencies []string) ([]string, error) {
 //   - error: Validation error if validation fails
 func ValidateFieldValue(key string, value any) (any, error) {
 	switch key {
-	case "name":
+	case "country":
 		if strVal, ok := value.(string); ok {
 			return validateName(strVal)
 		}
