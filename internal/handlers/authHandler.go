@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"envdash/internal/config"
-	"envdash/internal/services"
+	"envdash/internal/services/apiKey"
 	"envdash/internal/structs"
 	"log"
 	"net/http"
@@ -19,7 +19,7 @@ import (
 //   - router: HTTP request multiplexer to register routes
 //   - firestoreClient: Firestore database client
 func InitAuthentication(router *http.ServeMux, firestoreClient *firestore.Client) {
-	apiKeyServiceInstance := services.NewAPIKeyService(firestoreClient)
+	apiKeyServiceInstance := apiKey.NewAPIKeyService(firestoreClient)
 
 	// POST (Register new client)
 	router.HandleFunc(http.MethodPost+ " " + config.AUTH_PAGE_PATH, func(writer http.ResponseWriter, request *http.Request) {
@@ -39,7 +39,7 @@ func InitAuthentication(router *http.ServeMux, firestoreClient *firestore.Client
 //   - writer: HTTP response writer
 //   - request: HTTP request object
 //   - apiKeyServiceInstance: Service for creating API keys
-func registerNewClientHandler(writer http.ResponseWriter, request *http.Request, apiKeyServiceInstance *services.APIKeyService) {
+func registerNewClientHandler(writer http.ResponseWriter, request *http.Request, apiKeyServiceInstance *apiKey.APIKeyService) {
 
 	if request.Method != http.MethodPost {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
@@ -75,7 +75,7 @@ func registerNewClientHandler(writer http.ResponseWriter, request *http.Request,
 //   - writer: HTTP response writer
 //   - request: HTTP request object
 //   - apiKeyServiceInstance: Service for revoking API keys
-func revokeAPIKeyHandler(writer http.ResponseWriter, request *http.Request, apiKeyServiceInstance *services.APIKeyService) {
+func revokeAPIKeyHandler(writer http.ResponseWriter, request *http.Request, apiKeyServiceInstance *apiKey.APIKeyService) {
 	// Only allow DELETE
 	if request.Method != http.MethodDelete {
 		writer.WriteHeader(http.StatusMethodNotAllowed)

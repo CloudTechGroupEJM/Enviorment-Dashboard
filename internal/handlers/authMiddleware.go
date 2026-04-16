@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"envdash/internal/services"
+	"envdash/internal/services/apiKey"
 	"log"
 	"net/http"
 
@@ -19,7 +19,7 @@ import (
 //
 // Returns:
 //   - http.HandlerFunc: Wrapped handler that validates API key before executing the original handler
-func ProtectedRouteMiddleware(protectedHandlerFunction http.HandlerFunc, apiKeyServiceInstance *services.APIKeyService, firestoreClientInstance *firestore.Client) http.HandlerFunc {
+func ProtectedRouteMiddleware(protectedHandlerFunction http.HandlerFunc, apiKeyServiceInstance *apiKey.APIKeyService, firestoreClientInstance *firestore.Client) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		// Extract API key from X-API-Key header
 		apiKeyFromHeader := request.Header.Get("X-API-Key")

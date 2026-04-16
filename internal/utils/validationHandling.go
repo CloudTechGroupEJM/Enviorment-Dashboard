@@ -4,6 +4,7 @@ import (
 	"envdash/internal/structs"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"unicode"
 )
@@ -40,6 +41,7 @@ func Validation(registration *structs.RegisterCountry) error {
 //   - string: name
 //   - error: Error if name is empty or contains non-letter characters
 func validateName(name string) (string, error) {
+	log.Println("test reached here")
 	name, nameErr := validString(name, "name")
 	if nameErr != nil {
 		return "", nameErr

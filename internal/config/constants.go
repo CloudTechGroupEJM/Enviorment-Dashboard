@@ -41,3 +41,7 @@ const PATH_NOMINATIM_SEARCH = "search?" // after the question mark comes the thi
 // Application information
 const HEADER_CONTENT_TYPE = "Content-Type"
 const APPLICATION_JSON = "application/json"
+
+// time format
+const DATE_FORMAT = "20060102 15:04:05"
+

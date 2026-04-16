@@ -3,9 +3,9 @@ package status
 import (
 	"envdash/internal/client/status"
 	"envdash/internal/config"
+	"envdash/internal/services/notification"
 	"envdash/internal/structs"
 	"fmt"
-	"net/http"
 	"os"
 	"time"
 )
@@ -39,7 +39,8 @@ func (s *StatusInternal) GetStatus() *structs.StatusResponse {
 		AqAPI:        healthStatus["openaq"],
 		Nominatim:    healthStatus["nominatim"],
 		CurrencyAPI:  healthStatus["currency"],
-		Db_noti:      0, //todo implement status of the firestore instance
+		Db_noti:      0,                                   //todo implement status of the firestore instance
+		Webhooks:     notification.GetNotificationCount(), //todo implement
 		Version:      config.APPLICATION_VERSION,
 		Uptime:       fmt.Sprintf("%.f", time.Since(s.startTime).Seconds()),
 	}
@@ -57,14 +58,10 @@ func (s *StatusInternal) probeAllEndpoints() map[string]int {
 
 	healthStatuses := make(map[string]int)
 	for name, url := range endpoints {
-		statusCode, err := s.client.ProbeHeadEndpoint(url)
-		if err != nil {
-			statusCode = http.StatusServiceUnavailable
-		}
-		healthStatuses[name] = statusCode
+		healthStatuses[name] = s.client.ProbeHeadEndpoint(url)
 	}
 
-	healthStatuses["openaq"] = s.client.ProbeGetEndpoint(config.OPENAQ_PROBE, "", os.Getenv("OPEN_AQ_API_KEY"))
+	healthStatuses["openaq"] = s.client.ProbeGetEndpoint(config.OPENAQ_PROBE, "X-API-Key", os.Getenv("OPEN_AQ_API_KEY"))
 	healthStatuses["currency"] = s.client.ProbeGetEndpoint(config.CURRENCIES_API_PROBE, "", "")
 
 	return healthStatuses

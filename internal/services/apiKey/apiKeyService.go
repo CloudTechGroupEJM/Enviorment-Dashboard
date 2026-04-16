@@ -1,4 +1,4 @@
-package services
+package apiKey
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"envdash/internal/config"
 	"envdash/internal/store"
 	"envdash/internal/structs"
 	"envdash/internal/utils"
@@ -75,7 +76,7 @@ func (apiKeyService *APIKeyService) RegisterNewClient(ctx context.Context, regis
 
     generatedAPIKey := generateAPIKey()
     
-    currentTimestamp := time.Now().Format("20060102 15:04")
+    currentTimestamp := time.Now().Format(config.DATE_FORMAT)
 
     // Create doc
     newDocumentReference := apiKeyService.client.Collection(store.APIKEYCOLLECTION).NewDoc()
@@ -215,7 +216,7 @@ func (apiKeyService *APIKeyService) RevokeAPIKey(ctx context.Context, apiKeyToRe
 // Returns:
 //   - error: Firestore update error
 func (apiKeyService *APIKeyService) UpdateLastUsedTimestamp(ctx context.Context, apiKeyDocumentID string) error {
-    currentTimestamp := time.Now().Format("20060102 15:04:05")
+    currentTimestamp := time.Now().Format(config.DATE_FORMAT)
     
     documentReference := apiKeyService.client.Collection(store.APIKEYCOLLECTION).Doc(apiKeyDocumentID)
     _, updateError := documentReference.Update(ctx, []firestore.Update{

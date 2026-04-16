@@ -1,19 +1,22 @@
-package services
+package registration
 
 import (
 	"context"
+	"envdash/internal/config"
 	"envdash/internal/store"
 	"envdash/internal/structs"
 	"envdash/internal/utils"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-const DATE_FORMAT = "20060102 15:04:05"
 
 type RegistrationService struct {
 	client *firestore.Client
@@ -44,19 +47,19 @@ func NewRegistrationService(client *firestore.Client) *RegistrationService {
 // Returns:
 //   - string: generated Firestore document ID on success
 //   - error: validation error, duplicate ISO code error, or Firestore error
-func (service *RegistrationService) Post(ctx context.Context, registration structs.RegisterCountry) (string, string ,error) {
+func (service *RegistrationService) Post(ctx context.Context, registration structs.RegisterCountry) (string, string, error) {
 	if validationErr := utils.Validation(&registration); validationErr != nil {
-		return "", "" ,validationErr
+		return "", "", validationErr
 	}
 
-	registration.LastChange = time.Now().Format(DATE_FORMAT)
+	registration.LastChange = time.Now().Format(config.DATE_FORMAT)
 
 	isoExists, isoErr := service.isoCodeExists(ctx, registration.IsoCode)
 	if isoErr != nil {
 		return "", "", isoErr
 	}
 	if isoExists {
-		return "", "" ,errors.New("isoCode already exists in registration collection")
+		return "", "", errors.New("isoCode already exists in registration collection")
 	}
 
 	if len(registration.Features.TargetCurrencies) == 0{
@@ -68,9 +71,9 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 
 	_, creationError := registrationDoc.Set(ctx, registration)
 	if creationError != nil {
-		return "", "" ,creationError
+		return "", "", creationError
 	}
-	return registrationDoc.ID, registration.LastChange ,nil
+	return registrationDoc.ID, registration.LastChange, nil
 }
 
 // GetAll retrieves all registrations from the Firestore collection.
@@ -107,14 +110,21 @@ func (service *RegistrationService) GetAll(ctx context.Context) ([]map[string]in
 //   - ctx: context for the operation
 //
 // Returns:
-//   - map[string]interface{}: registration document data on success
+//   - *structs.RegisterCountry: registration document data on success
 //   - error: error if not found or query fails
-func (service *RegistrationService) GetByID(registrationID string, ctx context.Context) (map[string]interface{}, error) {
-	registration, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
-	if registrationErr != nil {
-		return nil, registrationErr
+func (service *RegistrationService) GetByID(ctx context.Context, registrationID string) (*structs.RegisterCountry, error) {
+	registrationSnapshot, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
+	if status.Code(registrationErr) == codes.NotFound {
+		return nil, fmt.Errorf("Registration with id %q not found", registrationID)
 	}
-	return registration.Data(), nil
+
+	// Create an empty struct and use DataTo to populate it
+	var registrationStruct structs.RegisterCountry
+	if err := registrationSnapshot.DataTo(&registrationStruct); err != nil {
+		return nil, err // Return an error if mapping fails
+	}
+
+	return &registrationStruct, nil
 }
 
 // DeleteAll removes all documents from the registrations collection.
@@ -170,7 +180,6 @@ func (service *RegistrationService) DeleteByID(registrationID string, ctx contex
 	return true, nil
 }
 
-
 // registrationExists checks if a registration document exists by its ID.
 //
 // Parameters:
@@ -206,7 +215,7 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 	if validationErr := utils.Validation(newRegistration); validationErr != nil {
 		return "", validationErr
 	}
-	newRegistration.LastChange = time.Now().Format(DATE_FORMAT)
+	newRegistration.LastChange = time.Now().Format(config.DATE_FORMAT)
 	_, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID).Set(ctx, newRegistration)
 	if registrationErr != nil {
@@ -214,7 +223,6 @@ func (service *RegistrationService) Put(newRegistration *structs.RegisterCountry
 	}
 	return registrationID, registrationErr
 }
-
 
 // Patch performs a partial update of a registration document.
 //
@@ -235,7 +243,7 @@ func (service *RegistrationService) Patch(registrationID string, ctx context.Con
 	registration := service.client.Collection(store.REGISTRATIONCOLLECTION).
 		Doc(registrationID)
 
-	dataUpdate["lastChange"] = time.Now().Format(DATE_FORMAT)
+	dataUpdate["lastChange"] = time.Now().Format(config.DATE_FORMAT)
 
 	updates, fieldsErr := toUpdateFields(dataUpdate)
 	if fieldsErr != nil {
@@ -249,7 +257,6 @@ func (service *RegistrationService) Patch(registrationID string, ctx context.Con
 
 	return nil
 }
-
 
 // toUpdateFields converts a map to Firestore Update objects for partial updates.
 //
@@ -307,8 +314,8 @@ func (service *RegistrationService) HeadAllRegistrations(ctx context.Context) (i
 //   - map[string]interface{}: registration document data on success
 //   - error: error if not found or query fails
 func (service *RegistrationService) HeadOneRegistration(registrationID string,
-	ctx context.Context) (map[string]interface{}, error) {
-	registration, registrationErr := service.GetByID(registrationID, ctx)
+	ctx context.Context) (*structs.RegisterCountry, error) {
+	registration, registrationErr := service.GetByID(ctx, registrationID)
 	if registrationErr != nil {
 		return nil, registrationErr
 	}

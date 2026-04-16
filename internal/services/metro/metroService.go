@@ -1,9 +1,11 @@
 package metro
 
 import (
+	"context"
 	"envdash/internal/client/metro"
 	"envdash/internal/structs"
 	"fmt"
+	"math"
 )
 
 // MetroInternal is the internal implementation of the metro service,
@@ -20,34 +22,29 @@ func NewMetroService() *MetroInternal {
 }
 
 // GetMetro constructs and returns the metro response
-func (mi *MetroInternal) GetMetro(lat float64, lon float64) (*structs.MetroResponse, error) {
-	meanTemp, meanPrecip, err := mi.processMetroData(lat, lon)
+func (mi *MetroInternal) GetMetro(ctx context.Context, lat float64, lon float64) (*structs.MetroResponse, error) {
+	if err := validateLatLong(lat, lon); err != nil {
+		return nil, err
+	}
+
+	meanTemp, meanPrecip, err := mi.processMetroData(ctx, lat, lon)
 	if err != nil {
 		return nil, err
 	}
 
-	//Fields are string, as they are not used for anything after
-	//If they are round with math.Round(val * 100) / 100, and change to fields to float
-	//If tests are hard: change back to float
 	return &structs.MetroResponse{
-		MeanTemperature:   fmt.Sprintf("%.2f", meanTemp),
-		MeanPrecipitation: fmt.Sprintf("%.2f", meanPrecip),
+		MeanTemperature:   meanTemp,
+		MeanPrecipitation: meanPrecip,
 	}, nil
 }
 
 // processMetroData fetches incoming data and calculates the mean
-func (mi *MetroInternal) processMetroData(latitude float64, longitude float64) (float64, float64, error) {
-	validCoords := validateLatLong(latitude, longitude)
-	if validCoords != nil {
-		return 0, 0, validCoords
-	}
-
-	metroData, err := mi.client.FetchMetroData(latitude, longitude)
+func (mi *MetroInternal) processMetroData(ctx context.Context, latitude float64, longitude float64) (float64, float64, error) {
+	metroData, err := mi.client.FetchMetroData(ctx, latitude, longitude)
 	if err != nil {
-		return 0, 0, fmt.Errorf("error metro info: %w", err)
+		return 0, 0, fmt.Errorf("fetching metro data: %w", err)
 	}
 
-	// Validate data exists before processing
 	if len(metroData.Daily.Temperature2mMean) == 0 {
 		return 0, 0, fmt.Errorf("no temperature data available")
 	}
@@ -55,8 +52,9 @@ func (mi *MetroInternal) processMetroData(latitude float64, longitude float64) (
 		return 0, 0, fmt.Errorf("no precipitation data available")
 	}
 
-	meanTemp := calculateMean(metroData.Daily.Temperature2mMean)
-	meanPrecip := calculateMean(metroData.Daily.PrecipitationSum)
+	//round to one decimal for extra precision
+	meanTemp := roundDeci(calculateMean(metroData.Daily.Temperature2mMean))
+	meanPrecip := roundDeci(calculateMean(metroData.Daily.PrecipitationSum))
 
 	return meanTemp, meanPrecip, nil
 }
@@ -64,6 +62,9 @@ func (mi *MetroInternal) processMetroData(latitude float64, longitude float64) (
 // calculateMean
 // gets the mean values given a given input list
 func calculateMean(values []float64) float64 {
+	if len(values) == 0 {
+		return 0
+	}
 	var sum float64
 	for _, val := range values {
 		sum += val
@@ -81,4 +82,9 @@ func validateLatLong(lat, long float64) error {
 		return fmt.Errorf("invalid longitude: must be between -180 and 180")
 	}
 	return nil
+}
+
+// roundOneDeci rounds to 2 decimal place
+func roundDeci(value float64) float64 {
+	return math.Round(value*100) / 100
 }

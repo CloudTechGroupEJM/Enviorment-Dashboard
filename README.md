@@ -1,5 +1,17 @@
 # Assignment 2
 
+## URLs
+- https://digredata.online/
+- http://10.212.173.183:8080/ (VPN required)
+
+## Endpoints
+```
+<url>/envdash/v1/status/
+<url>/envdash/v1/registrations/
+<url>/envdash/v1/notifications/
+<url>/envdash/v1/dashboards/
+```
+
 ## Run and start the application
 ### Requirements
 - Docker
@@ -34,3 +46,8 @@ replacing `path/to/your/credentials.json` with the actual path to your Firestore
     ./startup.sh
     ```
 5. The application will be running on `http://localhost:8080`. You can access it through your web browser or use tools like Postman to test the API endpoints.
+
+# Transient dependency
+google.golang.org/api v0.272.0
+google.golang.org/grpc v1.79.3
+

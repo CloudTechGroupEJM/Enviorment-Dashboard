@@ -14,7 +14,7 @@ func TestCalculateMean(t *testing.T) {
 	}{
 		{name: "normal values", values: []float64{10, 20, 30}, want: 20},
 		{name: "decimal values", values: []float64{1.5, 2.5}, want: 2},
-		{name: "empty slice returns NaN", values: []float64{}, nan: true},
+		{name: "empty slice returns 0", values: []float64{}, want: 0},
 	}
 
 	for _, tt := range tests {
