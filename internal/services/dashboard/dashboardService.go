@@ -102,8 +102,8 @@ func countryQuery(reg *structs.RegisterCountry) (string, error) {
 	if reg.IsoCode != "" {
 		return reg.IsoCode, nil
 	}
-	if reg.Name != "" {
-		return reg.Name, nil
+	if reg.CountryName != "" {
+		return reg.CountryName, nil
 	}
 	return "", fmt.Errorf("registration has neither iso code nor country name")
 }

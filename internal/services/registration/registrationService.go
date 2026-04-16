@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type RegistrationService struct {
@@ -54,14 +56,14 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 
 	// Check if ISO code and country name are both provided or both missing
 	hasIsoCode := registration.IsoCode != ""
-	hasCountryName := registration.Name != ""
+	hasCountryName := registration.CountryName != ""
 
 	if !hasIsoCode && !hasCountryName {
 		return "", "", errors.New("either country name or ISO code must be provided")
 	}
 
 	if hasCountryName {
-		countryExists, countryErr := service.countryNameExistsForApiKey(ctx, registration.Name, usedApiKey)
+		countryExists, countryErr := service.countryNameExistsForApiKey(ctx, registration.CountryName, usedApiKey)
 		if countryErr != nil {
 			return "", "", countryErr
 		}
@@ -142,15 +144,16 @@ func (service *RegistrationService) GetAll(ctx context.Context, usedApiKey strin
 //   - error: error if not found or query fails
 func (service *RegistrationService) GetByID(ctx context.Context, registrationID string, usedApiKey string) (*structs.RegisterCountry, error) {
 	registrationSnapshot, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
-	if registrationErr != nil {
+	if status.Code(registrationErr) == codes.NotFound {
 		return nil, fmt.Errorf("Registration with id %q not found", registrationID)
 	}
 
 	// Create an empty struct and use DataTo to populate it
 	var registrationStruct structs.RegisterCountry
 	if err := registrationSnapshot.DataTo(&registrationStruct); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding registration %q: %w", registrationID, err)
 	}
+	
 	
 	// Verify the API key matches
 	if registrationStruct.ApiKeyID != usedApiKey {
@@ -159,11 +162,8 @@ func (service *RegistrationService) GetByID(ctx context.Context, registrationID 
 	
 	registrationStruct.ApiKeyID = ""
 
-	var reg structs.RegisterCountry
-	if err := registrationSnapshot.DataTo(&reg); err != nil {
-		return nil, fmt.Errorf("decoding registration %q: %w", registrationID, err)
-	}
-	return &reg, nil
+
+	return &registrationStruct, nil
 }
 
 // DeleteAll removes all documents from the registrations collection.

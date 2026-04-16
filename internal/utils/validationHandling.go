@@ -20,20 +20,20 @@ func Validation(registration *structs.RegisterCountry) error {
 	var err error
 
 	
-	if registration.Name == "" && registration.IsoCode == "" {
+	if registration.CountryName == "" && registration.IsoCode == "" {
 		return errors.New("at least one of name or isoCode must be provided")
-	} else if registration.Name == "" && registration.IsoCode != "" {
+	} else if registration.CountryName == "" && registration.IsoCode != "" {
 		registration.IsoCode, err = validateIsoCode(registration.IsoCode, "isoCode", 2)
 		if err != nil {
 			return err
 		}
-	} else if registration.Name != "" && registration.IsoCode == ""{
-		registration.Name, err = validateName(registration.Name)
+	} else if registration.CountryName != "" && registration.IsoCode == ""{
+		registration.CountryName, err = validateName(registration.CountryName)
 		if err != nil {
 			return err
 		}
 	} else {
-		registration.Name, err = validateName(registration.Name)
+		registration.CountryName, err = validateName(registration.CountryName)
 		if err != nil {
 			return err
 		}

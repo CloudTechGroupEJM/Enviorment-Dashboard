@@ -24,7 +24,7 @@ func TestNewRegistrationServiceNilClient(t *testing.T) {
 
 func TestValidationSuccess(t *testing.T) {
 	registration := &structs.RegisterCountry{
-		Name:    "Canada",
+		CountryName:    "Canada",
 		IsoCode: "ca",
 	}
 	err := utils.Validation(registration) // Changed from validation() to utils.Validation()
@@ -43,7 +43,7 @@ func TestValidationMissingName(t *testing.T) {
 
 func TestValidationMissingIsoCode(t *testing.T) {
 	registration := &structs.RegisterCountry{
-		Name: "Canada",
+		CountryName: "Canada",
 	}
 	err := utils.Validation(registration) // Changed
 	assert.Error(t, err)
@@ -52,7 +52,7 @@ func TestValidationMissingIsoCode(t *testing.T) {
 
 func TestValidationInvalidIsoCodeLength(t *testing.T) {
 	registration := &structs.RegisterCountry{
-		Name:    "Canada",
+		CountryName:    "Canada",
 		IsoCode: "can",
 	}
 	err := utils.Validation(registration) // Changed
@@ -62,7 +62,7 @@ func TestValidationInvalidIsoCodeLength(t *testing.T) {
 
 func TestValidationIsoCodeTrimmed(t *testing.T) {
 	registration := &structs.RegisterCountry{
-		Name:    "Canada",
+		CountryName:    "Canada",
 		IsoCode: "  ca  ",
 	}
 	err := utils.Validation(registration) // Changed

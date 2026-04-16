@@ -4,12 +4,12 @@ package structs
 // Fields: ID (document ID), Name (country name), IsoCode (ISO country code),
 // Features (feature flags), LastChange (last update time)
 type RegisterCountry struct {
-	ID         string      `firestore:"id,omitempty" json:"id"`
-	ApiKeyID   string      `firestore:"apiKeyID" json:"apiKeyID,omitempty"`
-	Name       string      `firestore:"country" json:"country"`
-	IsoCode    string      `firestore:"isoCode" json:"isoCode"` // Fix this too if it has the typo
-	Features   BoolFeature `firestore:"features" json:"features"`
-	LastChange string      `firestore:"lastChange" json:"lastChange"`
+	ID          string      `firestore:"id,omitempty" json:"id"`
+	ApiKeyID    string      `firestore:"apiKeyID" json:"apiKeyID,omitempty"`
+	CountryName string      `firestore:"country" json:"country"`
+	IsoCode     string      `firestore:"isoCode" json:"isoCode"` // Fix this too if it has the typo
+	Features    BoolFeature `firestore:"features" json:"features"`
+	LastChange  string      `firestore:"lastChange" json:"lastChange"`
 }
 
 // BoolFeature contains boolean flags for available country features and target currencies.
