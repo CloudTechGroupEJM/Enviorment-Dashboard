@@ -17,7 +17,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-
 type RegistrationService struct {
 	client *firestore.Client
 }
@@ -62,8 +61,8 @@ func (service *RegistrationService) Post(ctx context.Context, registration struc
 		return "", "", errors.New("isoCode already exists in registration collection")
 	}
 
-	if len(registration.Features.TargetCurrencies) == 0{
-		return "", "" ,errors.New("TargetCurrencies cant be empty, each country has a currency")
+	if len(registration.Features.TargetCurrencies) == 0 {
+		return "", "", errors.New("TargetCurrencies cant be empty, each country has a currency")
 	}
 
 	registrationDoc := service.client.Collection(store.REGISTRATIONCOLLECTION).NewDoc()
@@ -111,20 +110,31 @@ func (service *RegistrationService) GetAll(ctx context.Context) ([]map[string]in
 //
 // Returns:
 //   - *structs.RegisterCountry: registration document data on success
-//   - error: error if not found or query fails
+//   - error: error if empty, not found or query fails
 func (service *RegistrationService) GetByID(ctx context.Context, registrationID string) (*structs.RegisterCountry, error) {
-	registrationSnapshot, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
-	if status.Code(registrationErr) == codes.NotFound {
-		return nil, fmt.Errorf("Registration with id %q not found", registrationID)
+	if strings.TrimSpace(registrationID) == "" {
+		return nil, fmt.Errorf("registration id is required")
 	}
 
-	// Create an empty struct and use DataTo to populate it
-	var registrationStruct structs.RegisterCountry
-	if err := registrationSnapshot.DataTo(&registrationStruct); err != nil {
-		return nil, err // Return an error if mapping fails
+	registrationSnapshot, err := service.client.
+		Collection(store.REGISTRATIONCOLLECTION).
+		Doc(registrationID).
+		Get(ctx)
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, fmt.Errorf("registration with id %q not found", registrationID)
+		}
+		if status.Code(err) == codes.InvalidArgument {
+			return nil, fmt.Errorf("invalid registration id %q", registrationID)
+		}
+		return nil, fmt.Errorf("loading registration %q: %w", registrationID, err)
 	}
 
-	return &registrationStruct, nil
+	var reg structs.RegisterCountry
+	if err := registrationSnapshot.DataTo(&reg); err != nil {
+		return nil, fmt.Errorf("decoding registration %q: %w", registrationID, err)
+	}
+	return &reg, nil
 }
 
 // DeleteAll removes all documents from the registrations collection.

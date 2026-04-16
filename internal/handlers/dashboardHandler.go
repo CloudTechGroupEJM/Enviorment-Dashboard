@@ -27,8 +27,8 @@ func DashboardRouter(router *http.ServeMux, client *firestore.Client, dispatcher
 	// Register the dashboard endpoint. {p1} represents the path parameter (ID).
 
 	//protected
-	router.HandleFunc(config.DASHBOARDS_PAGE_PATH+"{id}", 
-        ProtectedRouteMiddleware(dashboardHandler(dashboardService, dispatcher), apiKeyServiceInstance, client))
+	router.HandleFunc(config.DASHBOARDS_PAGE_PATH+"{id}",
+		ProtectedRouteMiddleware(dashboardHandler(dashboardService, dispatcher), apiKeyServiceInstance, client))
 }
 
 // dashboardHandler creates and returns an HTTP handler function for processing dashboard requests.
@@ -49,8 +49,8 @@ func dashboardHandler(service *dashboard.DashBoardInternal, dispatcher webhookDi
 			return
 		}
 
-		// Call the service layer to retrieve dashboard data using the "p1" path variable
-		dashboardReceived, err := service.GetDashboard(r.Context(), r.PathValue("p1"))
+		// Call the service layer to retrieve dashboard data using the "id" path variable
+		dashboardReceived, err := service.GetDashboard(r.Context(), r.PathValue("id"))
 		if err != nil {
 			http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
 			return
