@@ -25,19 +25,27 @@ func NewCountryClient() *CountryClient {
 	}
 }
 
-// FetchCountryData retrieves country information from the external country API
-// for the given two-letter country code.
+// FetchByCode retrieves country information by ISO 3166-1 alpha-2.
 //
 // Parameters:
 //   - ctx: request context for cancellation and timeouts
-//   - countryCode: a two-letter ISO 3166-1 alpha-2 country code (e.g. "NO", "US").
+//   - code: ISO 3166-1 alpha-2  code (e.g. "NO", "US")
+func (cc *CountryClient) FetchByCode(ctx context.Context, code string) ([]structs.IncomingCountry, error) {
+	return cc.fetch(ctx, config.PATH_REST_ALPHA, code)
+}
+
+// FetchByName retrieves country information by name (full or partial match).
 //
-// Returns:
-//   - []structs.IncomingCountry: a slice of country info structs populated with
-//     the API response data.
-//   - error: an error if the HTTP request fails or if the response body cannot be decoded.
-func (cc *CountryClient) FetchCountryData(ctx context.Context, countryCode string) ([]structs.IncomingCountry, error) {
-	cURL, err := countryUrl(countryCode)
+// Parameters:
+//   - ctx: request context for cancellation and timeouts
+//   - name: country name (e.g. "Norway")
+func (cc *CountryClient) FetchByName(ctx context.Context, name string) ([]structs.IncomingCountry, error) {
+	return cc.fetch(ctx, config.PATH_REST_NAME, name)
+}
+
+// fetch performs the GET + decode against the given path segment and value.
+func (cc *CountryClient) fetch(ctx context.Context, pathSegment, value string) ([]structs.IncomingCountry, error) {
+	cURL, err := countryUrl(pathSegment, value)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +61,6 @@ func (cc *CountryClient) FetchCountryData(ctx context.Context, countryCode strin
 	}
 	defer resp.Body.Close()
 
-	// check response code
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("country API returned %d: %s", resp.StatusCode, body)
@@ -66,12 +73,12 @@ func (cc *CountryClient) FetchCountryData(ctx context.Context, countryCode strin
 	return countryInfo, nil
 }
 
-// countryUrl builds the country lookup URL from base + alpha path + code
-func countryUrl(countryCode string) (string, error) {
+// countryUrl builds a country API URL for the given path segment (/alpha, /name) and value.
+func countryUrl(pathSegment, value string) (string, error) {
 	u, err := url.ParseRequestURI(config.REST_COUNTRIES_API)
 	if err != nil {
 		return "", fmt.Errorf("invalid country base URL: %w", err)
 	}
-	u.Path = path.Join(u.Path, config.PATH_REST_ALPHA, countryCode)
+	u.Path = path.Join(u.Path, pathSegment, value)
 	return u.String(), nil
 }

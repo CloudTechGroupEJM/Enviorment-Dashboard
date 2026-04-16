@@ -5,6 +5,7 @@ import (
 	"envdash/internal/client/country"
 	"envdash/internal/structs"
 	"fmt"
+	"strings"
 )
 
 type CountryInternal struct {
@@ -20,20 +21,38 @@ func NewCountryService() *CountryInternal {
 	}
 }
 
-// GetCountry
-// Retrieves country information for the given two-letter country code.
-// Returns the first country from the API response.
-func (ci *CountryInternal) GetCountry(ctx context.Context, countryCode string) (*structs.IncomingCountry, error) {
-	if countryCode == "" {
-		return nil, fmt.Errorf("country code is required")
+// GetCountry retrieves country information by either an ISO 3166-1 alpha-2/
+// code or a country name. The input form is detected automatically: 2-letter iso code, and everything else as a name.
+// Names have a minimum length of 3.
+//
+// Parameters:
+//   - ctx: request context for cancellation and timeouts
+//   - query: country ISO code (e.g. "NO", "US") or name (e.g. "Norway")
+//
+// Returns the first matching country, or an error if no match is found.
+func (ci *CountryInternal) GetCountry(ctx context.Context, query string) (*structs.IncomingCountry, error) {
+	query = strings.TrimSpace(query) //to remove space, removed so len() works
+	if query == "" {
+		return nil, fmt.Errorf("country query is required")
 	}
 
-	countries, err := ci.client.FetchCountryData(ctx, countryCode)
+	var countries []structs.IncomingCountry
+	var err error
+
+	switch {
+	case len(query) == 2:
+		countries, err = ci.client.FetchByCode(ctx, strings.ToUpper(query))
+	case len(query) > 2:
+		countries, err = ci.client.FetchByName(ctx, query)
+	default:
+		return nil, fmt.Errorf("country query %q is too short: must be a 2-letter ISO code or a full name", query)
+	}
+
 	if err != nil {
-		return nil, fmt.Errorf("getting country %s: %w", countryCode, err)
+		return nil, fmt.Errorf("getting country %q: %w", query, err)
 	}
 	if len(countries) == 0 {
-		return nil, fmt.Errorf("no country data returned for %s", countryCode)
+		return nil, fmt.Errorf("no country data returned for %q", query)
 	}
 	return &countries[0], nil
 }
