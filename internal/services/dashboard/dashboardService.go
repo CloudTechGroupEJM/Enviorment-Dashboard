@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -67,7 +68,9 @@ func NewDashboardService(client *firestore.Client) *DashBoardInternal {
 //   - *structs.DashboardResponse: the aggregated dashboard data
 //   - error: if registration is not found or critical foundational data is unavailable
 func (d *DashBoardInternal) GetDashboard(ctx context.Context, id string) (*structs.DashboardResponse, error) {
-	reg, err := d.firebase.GetByID(ctx, id)
+	trimID := strings.TrimSpace(id)
+
+	reg, err := d.firebase.GetByID(ctx, trimID)
 	if err != nil {
 		return nil, err
 	}
