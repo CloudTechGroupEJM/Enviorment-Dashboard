@@ -38,7 +38,7 @@ func TestValidationMissingName(t *testing.T) {
 	}
 	err := utils.Validation(registration) // Changed
 	assert.Error(t, err)
-	assert.Equal(t, "missing required field: name", err.Error())
+	assert.Equal(t, "missing required field: country", err.Error())
 }
 
 func TestValidationMissingIsoCode(t *testing.T) {

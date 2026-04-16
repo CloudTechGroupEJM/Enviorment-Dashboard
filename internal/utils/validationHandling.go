@@ -19,12 +19,36 @@ import (
 func Validation(registration *structs.RegisterCountry) error {
 	var err error
 
-	if registration.Name, err = validateName(registration.Name); err != nil {
-		return err
+	
+	if registration.Name == "" && registration.IsoCode == "" {
+		return errors.New("at least one of name or isoCode must be provided")
+	} else if registration.Name == "" && registration.IsoCode != "" {
+		registration.IsoCode, err = validateIsoCode(registration.IsoCode, "isoCode", 2)
+		if err != nil {
+			return err
+		}
+	} else if registration.Name != "" && registration.IsoCode == ""{
+		registration.Name, err = validateName(registration.Name)
+		if err != nil {
+			return err
+		}
+	} else {
+		registration.Name, err = validateName(registration.Name)
+		if err != nil {
+			return err
+		}
+		registration.IsoCode, err = validateIsoCode(registration.IsoCode, "isoCode", 2)
+		if err != nil {
+			return err
+		}
 	}
-	if registration.IsoCode, err = validateIsoCode(registration.IsoCode, "isoCode", 2); err != nil {
-		return err
-	}
+
+	// if registration.Name, err = validateName(registration.Name); err != nil {
+	// 	return err
+	// }
+	// if registration.IsoCode, err = validateIsoCode(registration.IsoCode, "isoCode", 2); err != nil {
+	// 	return err
+	// }
 
 	if registration.Features.TargetCurrencies, err = validateTargetCurrencies(registration.Features.TargetCurrencies); err != nil {
 		return err
@@ -32,7 +56,7 @@ func Validation(registration *structs.RegisterCountry) error {
 	return nil
 }
 
-// ValidateName validates and normalizes the name field.
+// ValidateName validates and normalizes the country field.
 // Parameters:
 //   - name: The name string to validate
 //
@@ -40,12 +64,12 @@ func Validation(registration *structs.RegisterCountry) error {
 //   - string: name
 //   - error: Error if name is empty or contains non-letter characters
 func validateName(name string) (string, error) {
-	name, nameErr := validString(name, "name")
+	name, nameErr := validString(name, "country")
 	if nameErr != nil {
 		return "", nameErr
 	}
 	name = strings.TrimSpace(name)
-	return name, nil
+	return strings.ToLower(name), nil
 }
 
 // ValidateIsoCode validates and normalizes an ISO code field.
