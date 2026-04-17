@@ -2,7 +2,10 @@ package openaq
 
 import (
 	"context"
+	"encoding/json"
+	"envdash/internal/cache"
 	aqclient "envdash/internal/client/aq"
+	"envdash/internal/config"
 	"envdash/internal/structs"
 	"log"
 	"math"
@@ -18,22 +21,54 @@ const (
 // The internal implementation of the aq service,
 // wrapping an HTTP client for air quality calculation.
 type AQInternal struct {
-	client *aqclient.AQClient
+	client         *aqclient.AQClient
+	cacheService   *cache.CacheService
+	cacheTTLConfig config.CacheTTL
 }
 
-// NewAqService
-// returns a new AQInternal instance with a client
-func NewAqService() *AQInternal {
+// NewAqService returns a new AQInternal instance with a client
+func NewAqService(cacheServiceInstance *cache.CacheService) *AQInternal {
 	return &AQInternal{
-		client: aqclient.NewAQClient(),
+		client:         aqclient.NewAQClient(),
+		cacheService:   cacheServiceInstance,
+		cacheTTLConfig: config.GetCacheTTLConfig(),
 	}
 }
 
 // GetAQ
 // Fetches air quality data for the given coordinates.
-// lat/long -> associated sensors (max 5) -> fetch sensor data -> calculate PM2.5/PM10 means -> EPA level
+// Uses cache when available, with CACHE_TTL_OPENAQ_HOURS TTL from environment
+// lat/long -> cache check -> sensors -> fetch sensor data -> calculate PM2.5/PM10 means -> EPA level
 // Returns AqResponse with rounded PM values and EPA air quality category.
 func (aqI *AQInternal) GetAQ(ctx context.Context, lat, long float64) (*structs.AqResponse, error) {
+	// Generate cache key from coordinates
+	cacheKeyParams := map[string]interface{}{
+		"lat":  lat,
+		"long": long,
+	}
+
+	cacheKeyValue, err := cache.GenerateCacheKey("openaq", cacheKeyParams)
+	if err != nil {
+		log.Printf("error generating cache key: %v", err)
+		cacheKeyValue = ""
+	}
+
+	// Try to get from cache
+	if cacheKeyValue != "" {
+		cachedResponseValue, err := aqI.cacheService.GetCached(ctx, cacheKeyValue)
+		if err != nil {
+			log.Printf("error retrieving from cache: %v", err)
+		} else if cachedResponseValue != nil {
+			responseJSON, _ := json.Marshal(cachedResponseValue)
+			var cachedAQResponse structs.AqResponse
+			if err := json.Unmarshal(responseJSON, &cachedAQResponse); err == nil {
+				log.Printf("cache hit for openaq query: lat=%f, long=%f", lat, long)
+				return &cachedAQResponse, nil
+			}
+		}
+	}
+
+	// Cache miss - fetch from API
 	locations, err := aqI.client.FetchSensors(ctx, lat, long)
 	if err != nil {
 		return nil, err
@@ -47,11 +82,26 @@ func (aqI *AQInternal) GetAQ(ctx context.Context, lat, long float64) (*structs.A
 	pm25 := meanAq(pm25Values)
 	pm10 := meanAq(pm10Values)
 
-	return &structs.AqResponse{
+	aqResponseData := &structs.AqResponse{
 		PM25:  roundTwoDeci(pm25),
 		PM10:  roundTwoDeci(pm10),
 		Level: epaLevel(pm25),
-	}, nil
+	}
+
+	// Store in cache
+	if cacheKeyValue != "" {
+		storeErr := aqI.cacheService.SetCached(
+			ctx,
+			cacheKeyValue,
+			aqResponseData,
+			aqI.cacheTTLConfig.OpenAQHours,
+		)
+		if storeErr != nil {
+			log.Printf("error caching openaq response: %v", storeErr)
+		}
+	}
+
+	return aqResponseData, nil
 }
 
 // pickLocationIDs returns up to limit location IDs from the response.
