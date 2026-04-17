@@ -84,7 +84,7 @@ func TestFetchCapitalCoords(t *testing.T) {
 		wantName     string
 	}{
 		{
-			name:    "happy path returns Oslo coordinates",
+			name:    "Returns Oslo coordinates",
 			capital: "Oslo",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")

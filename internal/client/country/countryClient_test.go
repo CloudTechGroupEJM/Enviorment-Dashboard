@@ -84,7 +84,7 @@ func TestFetchCountryData(t *testing.T) {
 		errContains  string
 	}{
 		{
-			name:        "happy path returns Norway data",
+			name:        "Returns Norway data",
 			countryCode: "NO",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -107,7 +107,7 @@ func TestFetchCountryData(t *testing.T) {
 			},
 		},
 		{
-			name:        "happy path returns Sweden data",
+			name:        "Returns Sweden data",
 			countryCode: "SE",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				_, _ = io.WriteString(w, swedenStub)

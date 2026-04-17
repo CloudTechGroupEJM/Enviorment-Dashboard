@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "name": "openaq-api",
+    "website": "/",
+    "page": 1,
+    "limit": 10,
+    "found": 2
+  },
+  "results": [
+    {
+      "id": 2178,
+      "name": "Oslo Kirkeveien",
+      "locality": "Oslo",
+      "country": {"id": 45, "code": "NO", "name": "Norway"},
+      "coordinates": {"latitude": 59.9325, "longitude": 10.7197},
+      "sensors": [
+        {"id": 4321, "name": "no2 µg/m³", "parameter": {"id": 7, "name": "no2", "units": "µg/m³"}},
+        {"id": 4322, "name": "pm25 µg/m³", "parameter": {"id": 2, "name": "pm25", "units": "µg/m³"}}
+      ]
+    },
+    {
+      "id": 2179,
+      "name": "Oslo Manglerud",
+      "locality": "Oslo",
+      "country": {"id": 45, "code": "NO", "name": "Norway"},
+      "coordinates": {"latitude": 59.8939, "longitude": 10.8156},
+      "sensors": [
+        {"id": 4400, "name": "pm10 µg/m³", "parameter": {"id": 1, "name": "pm10", "units": "µg/m³"}}
+      ]
+    }
+  ]
+}

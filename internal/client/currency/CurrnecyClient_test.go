@@ -82,7 +82,7 @@ func TestFetchExchangeRates(t *testing.T) {
 		wantRates    map[string]float64
 	}{
 		{
-			name:    "happy path returns NOK rates",
+			name:    "Returns NOK rates",
 			baseCur: "NOK",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
