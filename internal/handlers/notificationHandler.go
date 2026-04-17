@@ -32,9 +32,10 @@ type notificationServiceAPI interface {
 // Parameters:
 //   - router: *http.ServeMux - The HTTP request multiplexer to register handlers with
 //   - client: *firestore.Client - The Firestore client used by the NotificationService for database operations
+//   - apiKeyServiceInstance: *apiKey.APIKeyService - The API key service used for authentication
 //
 // Returns:
-//   - *services.NotificationService: The initialized NotificationService instance used by the handlers
+//   - *notification.NotificationService: The initialized NotificationService instance used by the handlers
 func notificationsHandler(router *http.ServeMux, client *firestore.Client, apiKeyServiceInstance *apiKey.APIKeyService) *notification.NotificationService {
 	service := notification.NewNotificationService(client, nil)
 	handler := &NotificationHandler{service: service}
@@ -71,11 +72,14 @@ func (handler *NotificationHandler) handleNotifications(writer http.ResponseWrit
 }
 
 // createNotification handles the creation of a new notification registration. It expects a JSON payload in the request body containing the details of the notification to be created.
-// It decodes the JSON payload into a NotificationRegistration struct, calls the service layer to create the notification, and returns the ID of the newly created notification in the response.
 //
 // Parameters:
 //   - writer: http.ResponseWriter - The HTTP response writer used to send responses back to the client
 //   - request: *http.Request - The incoming HTTP request containing the JSON payload for creating a new notification
+//
+// Error Codes:
+//   - 201 Created: Notification successfully created
+//   - 400 Bad Request: Invalid JSON payload or service error
 func (handler *NotificationHandler) createNotification(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 

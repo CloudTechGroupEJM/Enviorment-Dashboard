@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"context"
+	"envdash/internal/cache"
 	"envdash/internal/config"
 	"envdash/internal/services/country"
 	"envdash/internal/services/currency"
@@ -36,17 +37,18 @@ type DashBoardInternal struct {
 // the provided Firestore client into the registration (database) service.
 //
 // Parameters:
-//   - client: A pointer to the configured Firestore client.
+//   - client: *firestore.Client - The configured Firestore client
+//   - cacheServiceInstance: *cache.CacheService - The cache service for caching operations
 //
 // Returns:
-//   - A pointer to the initialized DashBoardInternal service.
-func NewDashboardService(client *firestore.Client) *DashBoardInternal {
+//   - *DashBoardInternal: The initialized dashboard service
+func NewDashboardService(client *firestore.Client, cacheServiceInstance *cache.CacheService) *DashBoardInternal {
 	return &DashBoardInternal{
-		counSer:  country.NewCountryService(),
-		curSer:   currency.NewCurrencyService(),
-		metroSer: metro.NewMetroService(),
-		aqSer:    openaq.NewAqService(),
-		nomSer:   nominatim.NewNomService(),
+		counSer:  country.NewCountryService(cacheServiceInstance),
+		curSer:   currency.NewCurrencyService(cacheServiceInstance),
+		metroSer: metro.NewMetroService(cacheServiceInstance),
+		aqSer:    openaq.NewAqService(cacheServiceInstance),
+		nomSer:   nominatim.NewNomService(cacheServiceInstance),
 		firebase: registration.NewRegistrationService(client),
 	}
 }
@@ -101,6 +103,13 @@ func (d *DashBoardInternal) GetDashboard(ctx context.Context, id string, usedApi
 // countryQuery picks whichever of ISO code or name the registration provided.
 // Prefers IsoCode when both are set (it's a stricter identifier than a name,
 // which can partially match multiple countries).
+//
+// Parameters:
+//   - reg: *structs.RegisterCountry - The registration containing country identifiers
+//
+// Returns:
+//   - string: The country query string (ISO code or name)
+//   - error: If neither ISO code nor country name is provided
 func countryQuery(reg *structs.RegisterCountry) (string, error) {
 	if reg.IsoCode != "" {
 		return reg.IsoCode, nil

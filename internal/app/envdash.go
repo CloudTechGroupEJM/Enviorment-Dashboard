@@ -1,6 +1,7 @@
 package app
 
 import (
+	"envdash/internal/cache"
 	"envdash/internal/handlers"
 	"envdash/internal/store"
 	"envdash/internal/utils"
@@ -31,7 +32,14 @@ func StartServer(port string) {
 		}
 		defer client.Close()
 
-		handlers.SetupAllHandlers(router, client)
+		cacheServiceInstance := cache.NewCacheService(client)
+
+		cachePurgeManager := cache.NewCachePurgeManager(cacheServiceInstance)
+		cachePurgeManager.StartPurgeWorker()
+
+		defer cachePurgeManager.StopPurgeWorker()
+
+		handlers.SetupAllHandlers(router, client, cacheServiceInstance)
 
 		log.Println("Starting HTTP server on port " + port)
 		log.Fatal(http.ListenAndServe(":"+port, router))

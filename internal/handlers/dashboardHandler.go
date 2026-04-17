@@ -3,6 +3,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"envdash/internal/cache"
 	"envdash/internal/config"
 	"envdash/internal/services/apiKey"
 	"envdash/internal/services/dashboard"
@@ -22,8 +23,11 @@ var dashboardService *dashboard.DashBoardInternal
 // Parameters:
 //   - router: The HTTP router (ServeMux) where the dashboard paths will be registered.
 //   - client: The firestore client used for database operations.
-func DashboardRouter(router *http.ServeMux, client *firestore.Client, dispatcher webhookDispatcher, apiKeyServiceInstance *apiKey.APIKeyService) {
-	dashboardService = dashboard.NewDashboardService(client)
+//   - dispatcher: The webhook dispatcher for sending notifications.
+//   - apiKeyServiceInstance: The API key service for authentication.
+//   - cacheServiceInstance: The cache service for caching operations.
+func DashboardRouter(router *http.ServeMux, client *firestore.Client, dispatcher webhookDispatcher, apiKeyServiceInstance *apiKey.APIKeyService,cacheServiceInstance *cache.CacheService) {
+	dashboardService = dashboard.NewDashboardService(client, cacheServiceInstance)
 	// Register the dashboard endpoint. {p1} represents the path parameter (ID).
 
 	//protected
@@ -33,14 +37,19 @@ func DashboardRouter(router *http.ServeMux, client *firestore.Client, dispatcher
 
 // dashboardHandler creates and returns an HTTP handler function for processing dashboard requests.
 // It ensures that only GET requests are allowed and utilizes the provided service to fetch
-// dashboard data based on the path parameter "p1".
+// dashboard data based on the path parameter "id".
 //
 // Parameters:
 //   - service: The internal dashboard service used to fetch dashboard data.
+//   - dispatcher: The webhook dispatcher for sending notifications.
 //
 // Returns:
-//   - http.HandlerFunc: A function that writes the dashboard JSON to the HTTP response,
-//     or returns appropriate HTTP error codes (405 Method Not Allowed, 400 Bad Request, 404 Not Found) if issues occur.
+//   - http.HandlerFunc: A function that processes HTTP requests and writes dashboard JSON to the response.
+//
+// Error Codes:
+//   - 405 Method Not Allowed: If the request method is not GET.
+//   - 400 Bad Request: If the service fails to retrieve dashboard data.
+//   - 404 Not Found: If no dashboard data is found for the requested ID.
 func dashboardHandler(service *dashboard.DashBoardInternal, dispatcher webhookDispatcher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Restrict to HTTP GET method only

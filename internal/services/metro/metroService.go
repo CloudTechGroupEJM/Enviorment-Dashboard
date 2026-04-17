@@ -2,45 +2,101 @@ package metro
 
 import (
 	"context"
+	"encoding/json"
+	"envdash/internal/cache"
 	"envdash/internal/client/metro"
 	"envdash/internal/structs"
 	"fmt"
+	"log"
 	"math"
 )
 
-// MetroInternal is the internal implementation of the metro service,
-// wrapping an HTTP client for metro-related operations.
 type MetroInternal struct {
-	client *metro.MetroClient
+	client         *metro.MetroClient
+	cacheService   *cache.CacheService
+	cacheTTLConfig cache.CacheTTL
 }
 
-// NewMetroService returns a new MetroInternal instance with a configured HTTP client.
-func NewMetroService() *MetroInternal {
+// NewMetroService returns a new MetroInternal instance with a configured HTTP client
+func NewMetroService(cacheServiceInstance *cache.CacheService) *MetroInternal {
 	return &MetroInternal{
-		client: metro.NewMetroClient(),
+		client:         metro.NewMetroClient(),
+		cacheService:   cacheServiceInstance,
+		cacheTTLConfig: cache.GetCacheTTLConfig(),
 	}
 }
 
-// GetMetro constructs and returns the metro response
-func (mi *MetroInternal) GetMetro(ctx context.Context, lat float64, lon float64) (*structs.MetroResponse, error) {
-	if err := validateLatLong(lat, lon); err != nil {
+// GetMetro constructs and returns the metro response, using cache when available
+func (metroInternalService *MetroInternal) GetMetro(
+	ctx context.Context,
+	latitude float64,
+	longitude float64,
+) (*structs.MetroResponse, error) {
+	if err := validateLatLong(latitude, longitude); err != nil {
 		return nil, err
 	}
 
-	meanTemp, meanPrecip, err := mi.processMetroData(ctx, lat, lon)
+	// Generate cache key from coordinates
+	cacheKeyParams := map[string]interface{}{
+		"latitude":  latitude,
+		"longitude": longitude,
+	}
+
+	cacheKeyValue, err := cache.GenerateCacheKey("metro", cacheKeyParams)
+	if err != nil {
+		log.Printf("error generating cache key: %v", err)
+		cacheKeyValue = ""
+	}
+
+	// Try to get from cache
+	if cacheKeyValue != "" {
+		cachedResponseValue, err := metroInternalService.cacheService.GetCached(ctx, cacheKeyValue)
+		if err != nil {
+			log.Printf("error retrieving from cache: %v", err)
+		} else if cachedResponseValue != nil {
+			responseJSON, _ := json.Marshal(cachedResponseValue)
+			var cachedMetroResponse structs.MetroResponse
+			if err := json.Unmarshal(responseJSON, &cachedMetroResponse); err == nil {
+				log.Printf("cache hit for metro query: lat=%f, lon=%f", latitude, longitude)
+				return &cachedMetroResponse, nil
+			}
+		}
+	}
+
+	// Cache miss - process metro data
+	meanTemp, meanPrecip, err := metroInternalService.processMetroData(ctx, latitude, longitude)
 	if err != nil {
 		return nil, err
 	}
 
-	return &structs.MetroResponse{
+	metroResponseData := &structs.MetroResponse{
 		MeanTemperature:   meanTemp,
 		MeanPrecipitation: meanPrecip,
-	}, nil
+	}
+
+	// Store in cache
+	if cacheKeyValue != "" {
+		storeErr := metroInternalService.cacheService.SetCached(
+			ctx,
+			cacheKeyValue,
+			metroResponseData,
+			metroInternalService.cacheTTLConfig.MetroHours,
+		)
+		if storeErr != nil {
+			log.Printf("error caching metro response: %v", storeErr)
+		}
+	}
+
+	return metroResponseData, nil
 }
 
 // processMetroData fetches incoming data and calculates the mean
-func (mi *MetroInternal) processMetroData(ctx context.Context, latitude float64, longitude float64) (float64, float64, error) {
-	metroData, err := mi.client.FetchMetroData(ctx, latitude, longitude)
+func (metroInternalService *MetroInternal) processMetroData(
+	ctx context.Context,
+	latitude float64,
+	longitude float64,
+) (float64, float64, error) {
+	metroData, err := metroInternalService.client.FetchMetroData(ctx, latitude, longitude)
 	if err != nil {
 		return 0, 0, fmt.Errorf("fetching metro data: %w", err)
 	}
@@ -52,15 +108,13 @@ func (mi *MetroInternal) processMetroData(ctx context.Context, latitude float64,
 		return 0, 0, fmt.Errorf("no precipitation data available")
 	}
 
-	//round to one decimal for extra precision
 	meanTemp := roundDeci(calculateMean(metroData.Daily.Temperature2mMean))
 	meanPrecip := roundDeci(calculateMean(metroData.Daily.PrecipitationSum))
 
 	return meanTemp, meanPrecip, nil
 }
 
-// calculateMean
-// gets the mean values given a given input list
+// calculateMean gets the mean values given a given input list
 func calculateMean(values []float64) float64 {
 	if len(values) == 0 {
 		return 0
@@ -72,19 +126,18 @@ func calculateMean(values []float64) float64 {
 	return sum / float64(len(values))
 }
 
-// validateLatLong
-// Validates that the latitude and longitude are acceptable values
-func validateLatLong(lat, long float64) error {
-	if lat < -90 || lat > 90 {
+// validateLatLong validates that the latitude and longitude are acceptable values
+func validateLatLong(latitude, longitude float64) error {
+	if latitude < -90 || latitude > 90 {
 		return fmt.Errorf("invalid latitude: must be between -90 and 90")
 	}
-	if long < -180 || long > 180 {
+	if longitude < -180 || longitude > 180 {
 		return fmt.Errorf("invalid longitude: must be between -180 and 180")
 	}
 	return nil
 }
 
-// roundOneDeci rounds to 2 decimal place
+// roundDeci rounds to one decimal place
 func roundDeci(value float64) float64 {
-	return math.Round(value*100) / 100
+	return math.Round(value*10) / 10
 }
