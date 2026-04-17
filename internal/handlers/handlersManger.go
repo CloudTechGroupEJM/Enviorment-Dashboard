@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"envdash/internal/cache"
 	"envdash/internal/services/apiKey"
 	"net/http"
 
@@ -13,12 +14,13 @@ import (
 // Parameters:
 //   - router: *http.ServeMux - The HTTP request multiplexer to register handlers with
 //   - client: *firestore.Client - The Firestore client used by handlers that require database access
-func SetupAllHandlers(router *http.ServeMux, client *firestore.Client) {
+func SetupAllHandlers(router *http.ServeMux, client *firestore.Client, cacheServiceInstance *cache.CacheService ) {
 	apiKeyServiceInstance := apiKey.NewAPIKeyService(client)
 	dispatcher := notificationsHandler(router, client, apiKeyServiceInstance)
 
 	InitAuthentication(router, client)
 	InitRegistration(router, client, dispatcher, apiKeyServiceInstance)
 	StatusRouter(router)
-	DashboardRouter(router, client, dispatcher, apiKeyServiceInstance)
+	DashboardRouter(router, client, dispatcher, apiKeyServiceInstance, cacheServiceInstance)
 }
+
