@@ -184,7 +184,133 @@ replacing `path/to/your/credentials.json` with the actual path to your Firestore
 
 
 ## Project structure
+| Directory/File     | Description                                                                                                                           |
+|--------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| cmd/server/main.go | entrypoint                                                                                                                            |
+| internal/app/      | Server initialization and setup; handles route registration and dependency injection                                                  |
+| internal/config/   | Configuration constants; includes API endpoints, paths, ports, and API credentials                                                    |
+| internal/cache/    | Caching service; stores and manages API response caching using Firestore                                                              |
+| internal/handlers/ | HTTP request handlers; manages endpoints for auth, registrations, dashboards, notifications, and status                               |
+| internal/services/ | Business logic layer; contains service implementations for API keys, countries, currencies, dashboards, metro data, and notifications |
+| internal/store/    | Data access layer; Firebase client initialization and Firestore database operations                                                   |
+| internal/structs/  | Data models; defines Go structs for API responses and internal data structures                                                        |
+| internal/client/   | External API clients; HTTP clients for OpenAQ, countries, currencies, metro weather, and Nominatim geocoding                          |
+| internal/utils/    | Utility functions; provides validation, verification, and common helper functions                                                     |
 
+
+```
+.
+├── Dockerfile
+├── README.md
+├── cmd
+│   └── main.go
+├── compose.yaml
+├── credentials
+│   └── db.json
+├── docs
+│   └── webhook-manual-verification.md
+├── go.mod
+├── go.sum
+├── internal
+│   ├── app
+│   │   └── envdash.go
+│   ├── cache
+│   │   ├── cacheConfig.go
+│   │   ├── cachePurgeManager.go
+│   │   ├── cacheService.go
+│   │   └── cacheService_test.go
+│   ├── client
+│   │   ├── aq
+│   │   │   ├── aqClient.go
+│   │   │   └── aqClient_test.go
+│   │   ├── country
+│   │   │   ├── countryClient.go
+│   │   │   └── countryClient_test.go
+│   │   ├── currency
+│   │   │   ├── CurrnecyClient_test.go
+│   │   │   └── currencyClient.go
+│   │   ├── metro
+│   │   │   ├── metroClient.go
+│   │   │   └── metroClient_test.go
+│   │   ├── nominatim
+│   │   │   ├── nominatimClient.go
+│   │   │   └── nominatimClient_test.go
+│   │   ├── status
+│   │   │   └── statusClient.go
+│   │   └── stubs
+│   │       ├── aqSensorStub.json
+│   │       ├── aqlocationStub.json
+│   │       ├── countryNorwayStub.json
+│   │       ├── countrySeStub.json
+│   │       ├── currencyNokStub.json
+│   │       ├── metroStub.json
+│   │       └── nomiOsloStub.json
+│   ├── config
+│   │   └── constants.go
+│   ├── handlers
+│   │   ├── authHandler.go
+│   │   ├── authMiddleware.go
+│   │   ├── dashboardHandler.go
+│   │   ├── dashboardHandler_test.go
+│   │   ├── handlersManger.go
+│   │   ├── notificationHandler.go
+│   │   ├── notificationHandler_test.go
+│   │   ├── registrationHandler.go
+│   │   ├── statusHandler.go
+│   │   └── webhookDispatcher.go
+│   ├── services
+│   │   ├── apiKey
+│   │   │   ├── apiKeyService.go
+│   │   │   └── apiKeyService_test.go
+│   │   ├── country
+│   │   │   ├── countryService.go
+│   │   │   └── countryService_test.go
+│   │   ├── currency
+│   │   │   ├── currencyService.go
+│   │   │   └── currencyService_test.go
+│   │   ├── dashboard
+│   │   │   ├── dashboardService.go
+│   │   │   └── dashboardService_test.go
+│   │   ├── metro
+│   │   │   ├── metroService.go
+│   │   │   └── metroService_test.go
+│   │   ├── nominatim
+│   │   │   ├── nominatimService.go
+│   │   │   └── nominatimService_test.go
+│   │   ├── notification
+│   │   │   ├── notificationService.go
+│   │   │   └── notificationService_test.go
+│   │   ├── openaq
+│   │   │   ├── openaqService.go
+│   │   │   └── openaqService_test.go
+│   │   ├── registration
+│   │   │   ├── registrationService.go
+│   │   │   └── registrationService_test.go
+│   │   └── status
+│   │       ├── statusService.go
+│   │       └── statusService_test.go
+│   ├── store
+│   │   ├── constants.go
+│   │   └── firebaseStore.go
+│   ├── structs
+│   │   ├── apiKeyStruct.go
+│   │   ├── aqStruct.go
+│   │   ├── countryStructs.go
+│   │   ├── currencyStruct.go
+│   │   ├── dashboardStructs.go
+│   │   ├── metroStruct.go
+│   │   ├── nomStruct.go
+│   │   ├── notificationStructs.go
+│   │   ├── registrationStruct.go
+│   │   └── statusResponse.go
+│   └── utils
+│       ├── validationHandling.go
+│       └── verificationHandling.go
+├── spesifications.md
+└── startup.sh
+
+31 directories, 78 files
+```
 
 # Transient dependency
 - google.golang.org/api v0.272.0
