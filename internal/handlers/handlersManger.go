@@ -21,7 +21,6 @@ func SetupAllHandlers(router *http.ServeMux, client *firestore.Client, cacheServ
 
 	InitAuthentication(router, client)
 	InitRegistration(router, client, dispatcher, apiKeyServiceInstance)
-	StatusRouter(router)
+	StatusRouter(router, client)
 	DashboardRouter(router, client, dispatcher, apiKeyServiceInstance, cacheServiceInstance)
 }
-

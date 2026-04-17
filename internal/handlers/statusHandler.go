@@ -7,24 +7,24 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"cloud.google.com/go/firestore"
 )
 
 // Hold the status service to be used by the handler
 var statusService *status.StatusInternal
 
-// init initializes the status service with the current time on application startup.
-// This function is called automatically once when the package is loaded.
-func init() {
-	statusService = status.StatusService(time.Now())
-}
+// StatusRouter
+// Routes to the statusHandler with the application-wide status service
+// Called once at startup when handlers are initialized
 
 // StatusRouter registers the status endpoint on the provided HTTP router.
 // It uses the application-wide status service to handle requests.
 //
 // Parameters:
 //   - router: *http.ServeMux - The HTTP router where the status endpoint will be registered
-func StatusRouter(router *http.ServeMux) {
-
+func StatusRouter(router *http.ServeMux, client *firestore.Client) {
+	statusService = status.StatusService(time.Now(), client)
 	router.HandleFunc(config.STATUS_PAGE_PATH, statusHandler(statusService))
 }
 
