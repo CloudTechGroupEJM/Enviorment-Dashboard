@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"envdash/internal/store"
 	"fmt"
 	"log"
 	"time"
@@ -30,7 +31,7 @@ type CacheService struct {
 func NewCacheService(firestoreClient *firestore.Client) *CacheService {
 	return &CacheService{
 		firestoreClient:    firestoreClient,
-		cacheCollectionRef: firestoreClient.Collection("api_cache"),
+		cacheCollectionRef: firestoreClient.Collection(store.CACHE_COLLECTION),
 	}
 }
 
