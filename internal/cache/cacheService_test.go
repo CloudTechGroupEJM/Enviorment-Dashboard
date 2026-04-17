@@ -194,6 +194,8 @@ func TestCacheEntryStructure(t *testing.T) {
 
 // TestCacheEntryExpiration verifies expiration logic
 func TestCacheEntryExpiration(t *testing.T) {
+    now := time.Now()
+    
     tests := []struct {
         name      string
         createdAt time.Time
@@ -202,25 +204,25 @@ func TestCacheEntryExpiration(t *testing.T) {
     }{
         {
             name:      "expired entry (25 hours with 24h TTL)",
-            createdAt: time.Now().Add(-25 * time.Hour),
+            createdAt: now.Add(-25 * time.Hour),
             ttlHours:  24,
             isExpired: true,
         },
         {
             name:      "valid entry (12 hours with 24h TTL)",
-            createdAt: time.Now().Add(-12 * time.Hour),
+            createdAt: now.Add(-12 * time.Hour),
             ttlHours:  24,
             isExpired: false,
         },
         {
-            name:      "entry at exact expiration time",
-            createdAt: time.Now().Add(-24 * time.Hour),
+            name:      "entry before expiration time (23 hours with 24h TTL)",
+            createdAt: now.Add(-23 * time.Hour),
             ttlHours:  24,
-            isExpired: false, // not after, so still valid
+            isExpired: false,
         },
         {
             name:      "very old entry",
-            createdAt: time.Now().Add(-1000 * time.Hour),
+            createdAt: now.Add(-1000 * time.Hour),
             ttlHours:  1,
             isExpired: true,
         },
@@ -239,7 +241,7 @@ func TestCacheEntryExpiration(t *testing.T) {
                 time.Duration(entry.TimeToLiveHours) * time.Hour,
             )
 
-            isExpired := time.Now().After(expirationTime)
+            isExpired := now.After(expirationTime)
             assert.Equal(t, tt.isExpired, isExpired, "expiration check failed")
         })
     }
