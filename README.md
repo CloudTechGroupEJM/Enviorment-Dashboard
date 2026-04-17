@@ -13,15 +13,39 @@
 <url>/envdash/v1/auth/
 ```
 ---
-## Status
-Provides information about the application's health and uptime. 
+## Authentication - /auth/
+Manages user authentication and authorization. 
+Clients must authenticate to access the API endpoints.
+
+| Method   | Path          | Description                                  | 
+|----------|---------------|----------------------------------------------|
+| `POST`   | `/auth/`      | Register a new client and receive an API key | 
+| `DELETE` | `/auth/{key}` | Revoke an API key                            | 
+
+**Request body:**
+```json
+{
+   "name":  "my-client-app",
+   "email": "user@example.com"
+}
+```
+
+The client must include the key in the X-API-Key header on every subsequent request:
+```
+GET /envdash/v1/dashboards/7f3a91bc04e2d158 HTTP/1.1
+X-API-Key: sk-envdash-a3f9c2b1e847d056
+```
+---
+## Status - /status/
+Provides information about the application's health and uptime.
 This endpoint can be used for monitoring and debugging purposes.
 
 | Method | Path      | Description          |
 |--------|-----------|----------------------|
 | `GET`  | `/status` | Service health check |
 
-## Registration
+---
+## Registration - /registrations/
 Manages the lifecycle of dashboard configurations. 
 Each configuration specifies a country and which environmental features to display.
 
@@ -66,14 +90,61 @@ To configure a new dashboard, send a `POST` request to the `/registrations/` end
 | `population`       | Country population                                                      |
 | `area`             | Land area (km²)                                                         |
 | `targetCurrencies` | Exchange rates from the country's base currency to each listed currency |
+---
+## Dashboard - /dashboards/
+Gives access to the populated dashboard for a given configuration ID. 
+When a dashboard is requested, the AIP will fetch the latest data from the external APIs.
 
-## Notifications
+| Method | Path               | Description                                                   |
+|--------|--------------------|---------------------------------------------------------------|
+| `GET`  | `/dashboards/{id}` | Retrieve a populated dashboard for the given configuration ID |
+
+---
+## Notifications - /notifications/
 Manages notifications for dashboard updates. 
 When a dashboard is updated, the AIP will send a notification to the registered webhook URL.
 Clients can retrieve notifications to stay informed about changes to their dashboards using webhooks.
 
-### Register a webhook
-To register a webhook, send a `POST` request to the `/notifications/` endpoint.
+| Method   | Path                  | Description                                     | 
+|----------|-----------------------|-------------------------------------------------|
+| `POST`   | `/notifications/`     | Register a new webhook (lifecycle or threshold) | 
+| `GET`    | `/notifications/{id}` | Retrieve a specific webhook registration        | 
+| `GET`    | `/notifications/`     | List all registered webhooks                    | 
+| `DELETE` | `/notifications/{id}` | Delete a webhook registration                   | 
+
+### Register a webhook notification
+Send a `POST` request to the `/notifications/` endpoint with a JSON body containing the webhook URL and the type of notification.
+
+**Lifecycle events (REGISTER, CHANGE, DELETE, INVOKE):**
+```json
+{
+  "url": "https://example.com/webhook",
+  "country": "ISO code",
+  "event": "lifecycle"
+}
+```
+**THRESHOLD event (extended fields required):**
+```json
+{
+   "url":     "https://exsample.com/webhook",
+   "country": "NO",
+   "event":   "THRESHOLD",
+   "threshold": {
+      "field":    "pm25",
+      "operator": ">",
+      "value":    35.0
+   }
+}
+```
+**Supported events:**
+
+| Event       | Triggered when…                                                                   |
+|-------------|-----------------------------------------------------------------------------------|
+| `REGISTER`  | A new dashboard configuration is registered (`POST /registrations/`)              |
+| `CHANGE`    | A configuration is updated (`PUT` or `PATCH /registrations/{id}`)                 |
+| `DELETE`    | A configuration is deleted (`DELETE /registrations/{id}`)                         |
+| `INVOKE`    | A populated dashboard is retrieved (`GET /dashboards/{id}`)                       |
+| `THRESHOLD` | A live measured value crosses a user-defined threshold during dashboard retrieval |
 
 ---
 ## Run and start the application
@@ -101,8 +172,8 @@ To register a webhook, send a `POST` request to the `/notifications/` endpoint.
 3. Add your Firestore credentials and you OpenAQ API key to the project. 
 You can do this by creating a `.env` file in the root directory of the project and adding the following line, 
 replacing `path/to/your/credentials.json` with the actual path to your Firestore credentials file and `your_openaq_api_key` with your actual OpenAQ API key:
-    ```bash
-    GOOGLE_APPLICATION_CREDENTIALS=path/to/your/credentials.json
+    ```
+    GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/credentials.json
     OPEN_AQ_API_KEY=your_openaq_api_key
     ```
 4. Run the startup script to build and start the Docker container.
@@ -116,6 +187,6 @@ replacing `path/to/your/credentials.json` with the actual path to your Firestore
 
 
 # Transient dependency
-google.golang.org/api v0.272.0
-google.golang.org/grpc v1.79.3
+- google.golang.org/api v0.272.0
+- google.golang.org/grpc v1.79.3
 
