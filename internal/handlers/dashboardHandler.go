@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"envdash/internal/config"
 	"envdash/internal/services/apiKey"
@@ -15,6 +16,10 @@ import (
 
 // dashboardService holds a package-level instance of DashBoardInternal to be used across dashboard requests.
 var dashboardService *dashboard.DashBoardInternal
+
+type dashboardFetcher interface {
+	GetDashboard(ctx context.Context, id, apiKey string) (*structs.DashboardResponse, error)
+}
 
 // DashboardRouter initializes the dashboard service and registers the dashboard endpoints
 // onto the provided HTTP ServeMux. It injects the shared firestore client into the service.
@@ -41,7 +46,7 @@ func DashboardRouter(router *http.ServeMux, client *firestore.Client, dispatcher
 // Returns:
 //   - http.HandlerFunc: A function that writes the dashboard JSON to the HTTP response,
 //     or returns appropriate HTTP error codes (405 Method Not Allowed, 400 Bad Request, 404 Not Found) if issues occur.
-func dashboardHandler(service *dashboard.DashBoardInternal, dispatcher webhookDispatcher) http.HandlerFunc {
+func dashboardHandler(service dashboardFetcher, dispatcher webhookDispatcher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Restrict to HTTP GET method only
 		if r.Method != http.MethodGet {
