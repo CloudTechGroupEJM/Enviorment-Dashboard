@@ -17,14 +17,30 @@ var statusService *status.StatusInternal
 // StatusRouter
 // Routes to the statusHandler with the application-wide status service
 // Called once at startup when handlers are initialized
+
+// StatusRouter registers the status endpoint on the provided HTTP router.
+// It uses the application-wide status service to handle requests.
+//
+// Parameters:
+//   - router: *http.ServeMux - The HTTP router where the status endpoint will be registered
 func StatusRouter(router *http.ServeMux, client *firestore.Client) {
 	statusService = status.StatusService(time.Now(), client)
 	router.HandleFunc(config.STATUS_PAGE_PATH, statusHandler(statusService))
 }
 
-// statusHandler
-// handles GET requests for the status endpoint
-// gives error on all other methods
+// statusHandler creates and returns an HTTP handler function for processing status requests.
+// It handles GET requests for the status endpoint and returns application status information.
+//
+// Parameters:
+//   - service: *status.StatusInternal - The status service used to retrieve application status
+//
+// Returns:
+//   - http.HandlerFunc: A function that processes HTTP requests and returns JSON-encoded status data
+//
+// Error Codes:
+//   - 200 OK: Status successfully retrieved and returned
+//   - 405 Method Not Allowed: If the request method is not GET
+//   - 500 Internal Server Error: If JSON marshalling fails
 func statusHandler(service *status.StatusInternal) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

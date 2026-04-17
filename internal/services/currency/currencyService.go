@@ -2,63 +2,107 @@ package currency
 
 import (
 	"context"
+	"encoding/json"
+	"envdash/internal/cache"
 	"envdash/internal/client/currency"
 	"envdash/internal/structs"
 	"fmt"
+	"log"
+	"sort"
 	"strings"
 )
 
-// CurrencyInternal is the internal implementation of the currency service,
-// wrapping an HTTP client for currency-related operations.
 type CurrencyInternal struct {
-	client *currency.CurrencyClient
+	client         *currency.CurrencyClient
+	cacheService   *cache.CacheService
+	cacheTTLConfig cache.CacheTTL
 }
 
-// NewCurrencyService returns a new CurrencyInternal instance with a configured HTTP client.
-func NewCurrencyService() *CurrencyInternal {
+// NewCurrencyService returns a new CurrencyInternal instance with a configured HTTP client
+func NewCurrencyService(cacheServiceInstance *cache.CacheService) *CurrencyInternal {
 	return &CurrencyInternal{
-		client: currency.NewCurrencyClient(),
+		client:         currency.NewCurrencyClient(),
+		cacheService:   cacheServiceInstance,
+		cacheTTLConfig: cache.GetCacheTTLConfig(),
 	}
 }
 
-// GetCurrency retrieves the exchange rate information for a given set of currencies, from the external currency API.
-// Based on the 3-letter currency code (ISO 4217), ie ("NOK"). And some 3-letter currency codes for the target currencies.
-//
-// Parameters:
-//   - ctx: request context for cancellation and timeouts
-//   - currencyCode: 3-letter currency code (ISO 4217)
-//   - target: list of 3-letter currency codes (ISO 4217) to match with
-//
-// Returns:
-//   - *structs.CurrencyResponse: the currencies and exchange rates that match the target.
-//     If target is empty, returns an empty map without calling the upstream API.
-//   - error: if the base currency is empty, the upstream request fails,
-//     or none of the requested targets are found in the response
-func (curI *CurrencyInternal) GetCurrency(ctx context.Context, currencyCode string, target []string) (*structs.CurrencyResponse, error) {
+// GetCurrency retrieves the exchange rate information, using cache when available
+func (currencyInternalService *CurrencyInternal) GetCurrency(
+	ctx context.Context,
+	currencyCode string,
+	target []string,
+) (*structs.CurrencyResponse, error) {
 	if currencyCode == "" {
 		return nil, fmt.Errorf("base currency code is required")
 	}
 
-	//returns empty response immediately
 	if len(target) == 0 {
 		return &structs.CurrencyResponse{TargetCurrencies: map[string]float64{}}, nil
 	}
 
-	allCur, err := curI.client.FetchExchangeRates(ctx, currencyCode)
+	// Generate cache key from parameters
+	// Sort target currencies for consistent key generation
+	sortedTarget := make([]string, len(target))
+	copy(sortedTarget, target)
+	sort.Strings(sortedTarget)
+
+	cacheKeyParams := map[string]interface{}{
+		"currencyCode": strings.ToUpper(currencyCode),
+		"targetCodes":  sortedTarget,
+	}
+
+	cacheKeyValue, err := cache.GenerateCacheKey("currency", cacheKeyParams)
+	if err != nil {
+		log.Printf("error generating cache key: %v", err)
+		cacheKeyValue = ""
+	}
+
+	// Try to get from cache
+	if cacheKeyValue != "" {
+		cachedResponseValue, err := currencyInternalService.cacheService.GetCached(ctx, cacheKeyValue)
+		if err != nil {
+			log.Printf("error retrieving from cache: %v", err)
+		} else if cachedResponseValue != nil {
+			responseJSON, _ := json.Marshal(cachedResponseValue)
+			var cachedCurrencyResponse structs.CurrencyResponse
+			if err := json.Unmarshal(responseJSON, &cachedCurrencyResponse); err == nil {
+				log.Printf("cache hit for currency query: %s to %v", currencyCode, sortedTarget)
+				return &cachedCurrencyResponse, nil
+			}
+		}
+	}
+
+	// Cache miss - fetch from API
+	allCurrencies, err := currencyInternalService.client.FetchExchangeRates(ctx, currencyCode)
 	if err != nil {
 		return nil, fmt.Errorf("getting exchange rates for %s: %w", currencyCode, err)
 	}
 
-	filtered := filterRates(allCur.Rates, target)
+	filtered := filterRates(allCurrencies.Rates, target)
 	if len(filtered) == 0 {
 		return nil, fmt.Errorf("none of the requested currencies found in response")
 	}
 
-	return &structs.CurrencyResponse{TargetCurrencies: filtered}, nil
+	currencyResponseData := &structs.CurrencyResponse{TargetCurrencies: filtered}
+
+	// Store in cache
+	if cacheKeyValue != "" {
+		storeErr := currencyInternalService.cacheService.SetCached(
+			ctx,
+			cacheKeyValue,
+			currencyResponseData,
+			currencyInternalService.cacheTTLConfig.CurrencyHours,
+		)
+		if storeErr != nil {
+			log.Printf("error caching currency response: %v", storeErr)
+		}
+	}
+
+	return currencyResponseData, nil
 }
 
-// filterRates returns the subset of rates whose currency codes appear in target.
-// claude inspired filtering
+// filterRates returns the subset of rates whose currency codes appear in target
 func filterRates(rates map[string]float64, target []string) map[string]float64 {
 	targetSet := make(map[string]struct{}, len(target))
 	for _, code := range target {
