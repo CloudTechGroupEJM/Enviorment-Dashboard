@@ -8,3 +8,9 @@ services:
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/credentials.json
       - OPEN_AQ_API_KEY=${OPEN_AQ_API_KEY}
+      - CACHE_TTL_OPENAQ_HOURS=1
+      - CACHE_TTL_COUNTRIES_HOURS=6
+      - CACHE_TTL_CURRENCY_HOURS=1
+      - CACHE_TTL_METRO_HOURS=6
+      - CACHE_TTL_NOMINATIM_HOURS=6
+      - CACHE_PURGE_INTERVAL_HOURS=12

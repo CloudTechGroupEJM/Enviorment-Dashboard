@@ -18,10 +18,10 @@ type CacheTTL struct {
 // Returns defaults if environment variables are not set
 func GetCacheTTLConfig() CacheTTL {
     return CacheTTL{
-        OpenAQHours:    getEnvIntOrDefault("CACHE_TTL_OPENAQ_HOURS", 6),
-        CountriesHours: getEnvIntOrDefault("CACHE_TTL_COUNTRIES_HOURS", 24),
-        CurrencyHours:  getEnvIntOrDefault("CACHE_TTL_CURRENCY_HOURS", 12),
-        MetroHours:     getEnvIntOrDefault("CACHE_TTL_METRO_HOURS", 24),
+        OpenAQHours:    getEnvIntOrDefault("CACHE_TTL_OPENAQ_HOURS", 1),
+        CountriesHours: getEnvIntOrDefault("CACHE_TTL_COUNTRIES_HOURS", 12),
+        CurrencyHours:  getEnvIntOrDefault("CACHE_TTL_CURRENCY_HOURS", 1),
+        MetroHours:     getEnvIntOrDefault("CACHE_TTL_METRO_HOURS", 6),
         NominatimHours: getEnvIntOrDefault("CACHE_TTL_NOMINATIM_HOURS", 12),
     }
 }

@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"context"
+	"envdash/internal/cache"
 	"envdash/internal/config"
 	"envdash/internal/services/country"
 	"envdash/internal/services/currency"
@@ -39,13 +40,13 @@ type DashBoardInternal struct {
 //
 // Returns:
 //   - A pointer to the initialized DashBoardInternal service.
-func NewDashboardService(client *firestore.Client) *DashBoardInternal {
+func NewDashboardService(client *firestore.Client, cacheServiceInstance *cache.CacheService) *DashBoardInternal {
 	return &DashBoardInternal{
-		counSer:  country.NewCountryService(),
-		curSer:   currency.NewCurrencyService(),
-		metroSer: metro.NewMetroService(),
-		aqSer:    openaq.NewAqService(),
-		nomSer:   nominatim.NewNomService(),
+		counSer:  country.NewCountryService(cacheServiceInstance),
+		curSer:   currency.NewCurrencyService(cacheServiceInstance),
+		metroSer: metro.NewMetroService(cacheServiceInstance),
+		aqSer:    openaq.NewAqService(cacheServiceInstance),
+		nomSer:   nominatim.NewNomService(cacheServiceInstance),
 		firebase: registration.NewRegistrationService(client),
 	}
 }
