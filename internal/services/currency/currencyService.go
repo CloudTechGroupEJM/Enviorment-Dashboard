@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"envdash/internal/cache"
 	"envdash/internal/client/currency"
-	"envdash/internal/config"
 	"envdash/internal/structs"
 	"fmt"
 	"log"
@@ -16,7 +15,7 @@ import (
 type CurrencyInternal struct {
 	client         *currency.CurrencyClient
 	cacheService   *cache.CacheService
-	cacheTTLConfig config.CacheTTL
+	cacheTTLConfig cache.CacheTTL
 }
 
 // NewCurrencyService returns a new CurrencyInternal instance with a configured HTTP client
@@ -24,7 +23,7 @@ func NewCurrencyService(cacheServiceInstance *cache.CacheService) *CurrencyInter
 	return &CurrencyInternal{
 		client:         currency.NewCurrencyClient(),
 		cacheService:   cacheServiceInstance,
-		cacheTTLConfig: config.GetCacheTTLConfig(),
+		cacheTTLConfig: cache.GetCacheTTLConfig(),
 	}
 }
 

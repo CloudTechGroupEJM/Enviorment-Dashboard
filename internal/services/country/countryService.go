@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"envdash/internal/cache"
 	"envdash/internal/client/country"
-	"envdash/internal/config"
 	"envdash/internal/structs"
 	"fmt"
 	"log"
@@ -15,7 +14,7 @@ import (
 type CountryInternal struct {
 	client         *country.CountryClient
 	cacheService   *cache.CacheService
-	cacheTTLConfig config.CacheTTL
+	cacheTTLConfig cache.CacheTTL
 }
 
 // NewCountryService creates and returns a new CountryInternal service
@@ -23,7 +22,7 @@ func NewCountryService(cacheServiceInstance *cache.CacheService) *CountryInterna
 	return &CountryInternal{
 		client:         country.NewCountryClient(),
 		cacheService:   cacheServiceInstance,
-		cacheTTLConfig: config.GetCacheTTLConfig(),
+		cacheTTLConfig: cache.GetCacheTTLConfig(),
 	}
 }
 

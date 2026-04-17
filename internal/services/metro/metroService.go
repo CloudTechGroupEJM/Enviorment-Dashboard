@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"envdash/internal/cache"
 	"envdash/internal/client/metro"
-	"envdash/internal/config"
 	"envdash/internal/structs"
 	"fmt"
 	"log"
@@ -15,7 +14,7 @@ import (
 type MetroInternal struct {
 	client         *metro.MetroClient
 	cacheService   *cache.CacheService
-	cacheTTLConfig config.CacheTTL
+	cacheTTLConfig cache.CacheTTL
 }
 
 // NewMetroService returns a new MetroInternal instance with a configured HTTP client
@@ -23,7 +22,7 @@ func NewMetroService(cacheServiceInstance *cache.CacheService) *MetroInternal {
 	return &MetroInternal{
 		client:         metro.NewMetroClient(),
 		cacheService:   cacheServiceInstance,
-		cacheTTLConfig: config.GetCacheTTLConfig(),
+		cacheTTLConfig: cache.GetCacheTTLConfig(),
 	}
 }
 

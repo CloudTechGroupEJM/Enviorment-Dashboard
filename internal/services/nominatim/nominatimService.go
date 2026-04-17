@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"envdash/internal/cache"
 	"envdash/internal/client/nominatim"
-	"envdash/internal/config"
 	"envdash/internal/structs"
 	"fmt"
 	"log"
@@ -16,7 +15,7 @@ import (
 type NomInternal struct {
 	client         *nominatim.NomClient
 	cacheService   *cache.CacheService
-	cacheTTLConfig config.CacheTTL
+	cacheTTLConfig cache.CacheTTL
 }
 
 // NewNomService creates and returns a new NomInternal service
@@ -24,7 +23,7 @@ func NewNomService(cacheServiceInstance *cache.CacheService) *NomInternal {
 	return &NomInternal{
 		client:         nominatim.NewNomClient(),
 		cacheService:   cacheServiceInstance,
-		cacheTTLConfig: config.GetCacheTTLConfig(),
+		cacheTTLConfig: cache.GetCacheTTLConfig(),
 	}
 }
 

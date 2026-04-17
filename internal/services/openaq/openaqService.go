@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"envdash/internal/cache"
 	aqclient "envdash/internal/client/aq"
-	"envdash/internal/config"
 	"envdash/internal/structs"
 	"log"
 	"math"
@@ -23,7 +22,7 @@ const (
 type AQInternal struct {
 	client         *aqclient.AQClient
 	cacheService   *cache.CacheService
-	cacheTTLConfig config.CacheTTL
+	cacheTTLConfig cache.CacheTTL
 }
 
 // NewAqService returns a new AQInternal instance with a client
@@ -31,7 +30,7 @@ func NewAqService(cacheServiceInstance *cache.CacheService) *AQInternal {
 	return &AQInternal{
 		client:         aqclient.NewAQClient(),
 		cacheService:   cacheServiceInstance,
-		cacheTTLConfig: config.GetCacheTTLConfig(),
+		cacheTTLConfig: cache.GetCacheTTLConfig(),
 	}
 }
 
