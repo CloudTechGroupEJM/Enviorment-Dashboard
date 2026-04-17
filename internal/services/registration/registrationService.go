@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -22,6 +23,7 @@ type RegistrationService struct {
 
 const UN_AUTHORIZED = "unauthorized this registration belongs to a different API key"
 const REG_NOT_FOUND = "Registration not found"
+
 // NewRegistrationService creates a new RegistrationService instance.
 //
 // Parameters:
@@ -143,9 +145,22 @@ func (service *RegistrationService) GetAll(ctx context.Context, usedApiKey strin
 //   - *structs.RegisterCountry: registration document data on success
 //   - error: error if not found or query fails
 func (service *RegistrationService) GetByID(ctx context.Context, registrationID string, usedApiKey string) (*structs.RegisterCountry, error) {
-	registrationSnapshot, registrationErr := service.client.Collection(store.REGISTRATIONCOLLECTION).Doc(registrationID).Get(ctx)
-	if status.Code(registrationErr) == codes.NotFound {
-		return nil, fmt.Errorf("Registration with id %q not found", registrationID)
+	if strings.TrimSpace(registrationID) == "" {
+		return nil, fmt.Errorf("registration id is required")
+	}
+
+	registrationSnapshot, err := service.client.
+		Collection(store.REGISTRATIONCOLLECTION).
+		Doc(registrationID).
+		Get(ctx)
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, fmt.Errorf("registration with id %q not found", registrationID)
+		}
+		if status.Code(err) == codes.InvalidArgument {
+			return nil, fmt.Errorf("invalid registration id %q", registrationID)
+		}
+		return nil, fmt.Errorf("loading registration %q: %w", registrationID, err)
 	}
 
 	// Create an empty struct and use DataTo to populate it
@@ -153,15 +168,13 @@ func (service *RegistrationService) GetByID(ctx context.Context, registrationID 
 	if err := registrationSnapshot.DataTo(&registrationStruct); err != nil {
 		return nil, fmt.Errorf("decoding registration %q: %w", registrationID, err)
 	}
-	
-	
+
 	// Verify the API key matches
 	if registrationStruct.ApiKeyID != usedApiKey {
 		return nil, errors.New(UN_AUTHORIZED)
 	}
-	
-	registrationStruct.ApiKeyID = ""
 
+	registrationStruct.ApiKeyID = ""
 
 	return &registrationStruct, nil
 }

@@ -1,0 +1,40 @@
+[
+  {
+    "name": {
+      "common": "Sweden",
+      "official": "Kingdom of Sweden",
+      "nativeName": {
+        "swe": {
+          "official": "Konungariket Sverige",
+          "common": "Sverige"
+        }
+      }
+    },
+    "tld": [
+      ".se"
+    ],
+    "cca2": "SE",
+    "ccn3": "752",
+    "cca3": "SWE",
+    "currencies": {
+      "SEK": {
+        "name": "Swedish krona",
+        "symbol": "kr"
+      }
+    },
+    "capital": [
+      "Stockholm"
+    ],
+    "latlng": [
+      62.0,
+      15.0
+    ],
+    "area": 450295.0,
+    "population": 10353442,
+    "flags": {
+      "png": "https://flagcdn.com/w320/se.png",
+      "svg": "https://flagcdn.com/se.svg",
+      "alt": "The flag of Sweden has a blue field with a large golden-yellow cross that extend to the edges of the field. The vertical part of this cross is offset towards the hoist side."
+    }
+  }
+]

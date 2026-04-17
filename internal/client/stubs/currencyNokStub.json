@@ -1,0 +1,18 @@
+{
+  "result": "success",
+  "provider": "https://www.exchangerate-api.com",
+  "documentation": "https://www.exchangerate-api.com/docs/free",
+  "terms_of_use": "https://www.exchangerate-api.com/terms",
+  "time_last_update_unix": 1776297752,
+  "time_last_update_utc": "Thu, 16 Apr 2026 00:02:32 +0000",
+  "time_next_update_unix": 1776385422,
+  "time_next_update_utc": "Fri, 17 Apr 2026 00:23:42 +0000",
+  "time_eol_unix": 0,
+  "base_code": "NOK",
+  "rates": {
+    "NOK": 1,
+    "USD": 0.106255,
+    "EUR": 0.090091,
+    "SEK": 0.975608
+  }
+}

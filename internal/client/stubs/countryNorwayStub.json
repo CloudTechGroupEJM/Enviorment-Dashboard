@@ -1,0 +1,48 @@
+[
+  {
+    "name": {
+      "common": "Norway",
+      "official": "Kingdom of Norway",
+      "nativeName": {
+        "nno": {
+          "official": "Kongeriket Noreg",
+          "common": "Noreg"
+        },
+        "nob": {
+          "official": "Kongeriket Norge",
+          "common": "Norge"
+        },
+        "smi": {
+          "official": "Norgga gonagasriika",
+          "common": "Norgga"
+        }
+      }
+    },
+    "tld": [
+      ".no"
+    ],
+    "cca2": "NO",
+    "ccn3": "578",
+    "cca3": "NOR",
+    "currencies": {
+      "NOK": {
+        "name": "Norwegian krone",
+        "symbol": "kr"
+      }
+    },
+    "capital": [
+      "Oslo"
+    ],
+    "latlng": [
+      62.0,
+      10.0
+    ],
+    "area": 323802.0,
+    "population": 5379475,
+    "flags": {
+      "png": "https://flagcdn.com/w320/no.png",
+      "svg": "https://flagcdn.com/no.svg",
+      "alt": "The flag of Norway has a red field with a large white-edged navy blue cross that extends to the edges of the field. The vertical part of this cross is offset towards the hoist side."
+    }
+  }
+]

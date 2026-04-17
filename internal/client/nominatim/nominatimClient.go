@@ -82,7 +82,7 @@ func requestNom(ctx context.Context, capital string) (*http.Request, error) {
 // nomUrl
 // creates the url to get the coordinates
 func nomUrl(capital string) (string, error) {
-	urlCreated, err := url.ParseRequestURI(config.NOMINATIM_API + "/search")
+	urlCreated, err := url.ParseRequestURI(config.NOMINATIM_API + config.PATH_NOMINATIM_SEARCH)
 	if err != nil {
 		return "", fmt.Errorf("invalid nominatim base URL: %w", err)
 	}
