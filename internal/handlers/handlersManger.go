@@ -14,6 +14,7 @@ import (
 // Parameters:
 //   - router: *http.ServeMux - The HTTP request multiplexer to register handlers with
 //   - client: *firestore.Client - The Firestore client used by handlers that require database access
+//   - cacheServiceInstance: *cache.CacheService - The cache service used for caching operations
 func SetupAllHandlers(router *http.ServeMux, client *firestore.Client, cacheServiceInstance *cache.CacheService ) {
 	apiKeyServiceInstance := apiKey.NewAPIKeyService(client)
 	dispatcher := notificationsHandler(router, client, apiKeyServiceInstance)

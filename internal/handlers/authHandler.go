@@ -11,7 +11,7 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
-// authHandler sets up authentication routes
+// InitAuthentication sets up authentication routes
 // POST Register a new client and receive an API key
 // DELETE Revoke an API key
 //

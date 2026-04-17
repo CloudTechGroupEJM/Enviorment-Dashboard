@@ -26,7 +26,12 @@ type RegistrationHandler struct {
 }
 
 // InitRegistration initializes the registration service, handler and endpoints.
-// Parameters: router - HTTP router, client - Firestore client
+//
+// Parameters:
+//   - router: *http.ServeMux - HTTP router where endpoints will be registered
+//   - client: *firestore.Client - Firestore client for database operations
+//   - dispatcher: webhookDispatcher - Webhook dispatcher for lifecycle events
+//   - apiKeyServiceInstance: *apiKey.APIKeyService - API key service for authentication
 func InitRegistration(router *http.ServeMux, client *firestore.Client, dispatcher webhookDispatcher, apiKeyServiceInstance *apiKey.APIKeyService) {
 	service := registration.NewRegistrationService(client)
 	handler := &RegistrationHandler{
@@ -66,8 +71,14 @@ func (handler *RegistrationHandler) handleRegistrations(writer http.ResponseWrit
 }
 
 // createRegistration handles HTTP POST requests to create a new country registration.
-// Parameters: writer - HTTP response writer, request - HTTP request with registration data
-// Returns: none (writes HTTP response)
+//
+// Parameters:
+//   - writer: http.ResponseWriter - HTTP response writer
+//   - request: *http.Request - HTTP request with registration data
+//
+// Error Codes:
+//   - 201 Created: Registration successfully created
+//   - 400 Bad Request: Invalid JSON payload or service error
 func (handler *RegistrationHandler) createRegistration(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
