@@ -29,6 +29,7 @@ const CURRENCIES_API_PROBE = "http://129.241.150.113:9090/currency/nok" //find b
 
 // API Path Rest Countries
 const PATH_REST_ALPHA = "alpha/"
+const PATH_REST_NAME = "name/"
 const PATH_REST_CURRENCY = "currency/"
 
 // API filters Rest Countries
@@ -44,4 +45,3 @@ const APPLICATION_JSON = "application/json"
 
 // time format
 const DATE_FORMAT = "20060102 15:04:05"
-

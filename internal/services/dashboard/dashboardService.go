@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -66,14 +67,21 @@ func NewDashboardService(client *firestore.Client) *DashBoardInternal {
 // Returns:
 //   - *structs.DashboardResponse: the aggregated dashboard data
 //   - error: if registration is not found or critical foundational data is unavailable
-func (d *DashBoardInternal) GetDashboard(ctx context.Context, id string) (*structs.DashboardResponse, error) {
-	reg, err := d.firebase.GetByID(ctx, id)
+func (d *DashBoardInternal) GetDashboard(ctx context.Context, id string, usedApiKey string) (*structs.DashboardResponse, error) {
+	trimID := strings.TrimSpace(id)
+	reg, err := d.firebase.GetByID(ctx, trimID, usedApiKey)
+
 	if err != nil {
 		return nil, err
 	}
 	feat := reg.Features
 
-	countryData, err := d.fetchCountry(ctx, reg.IsoCode, feat)
+	query, err := countryQuery(reg)
+	if err != nil {
+		return nil, err
+	}
+
+	countryData, err := d.fetchCountry(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -87,20 +95,25 @@ func (d *DashBoardInternal) GetDashboard(ctx context.Context, id string) (*struc
 	aqData := d.fetchAirQuality(ctx, nomiData, feat)
 	currencies := d.fetchCurrencies(ctx, countryData, feat)
 
-	return buildDashboard(reg, countryData, nomiData, metroData, aqData, currencies), nil
+	return buildDashboard(countryData, nomiData, metroData, aqData, currencies, feat), nil
+}
+
+// countryQuery picks whichever of ISO code or name the registration provided.
+// Prefers IsoCode when both are set (it's a stricter identifier than a name,
+// which can partially match multiple countries).
+func countryQuery(reg *structs.RegisterCountry) (string, error) {
+	if reg.IsoCode != "" {
+		return reg.IsoCode, nil
+	}
+	if reg.CountryName != "" {
+		return reg.CountryName, nil
+	}
+	return "", fmt.Errorf("registration has neither iso code nor country name")
 }
 
 // --- feature gates ---
 // Used to separate if a given registration actually needs to request from the external APIs.
 // If a feature is reliant on data from another api, both calls need to be made.
-
-// needsCountry determines if the country API must be called based on the requested features
-// and dependencies of downstream services.
-func needsCountry(f structs.BoolFeature) bool {
-	return f.Capital || f.Area || f.Population || f.Coordinates ||
-		f.Temperature || f.Precipitation || f.AirQuality ||
-		len(f.TargetCurrencies) > 0
-}
 
 // needsCoords determines if latitude and longitude data is needed via the Geocoding API,
 // either for direct display or as parameters for downstream coordinate-dependent APIs.
@@ -108,18 +121,17 @@ func needsCoords(f structs.BoolFeature) bool {
 	return f.Coordinates || f.Temperature || f.Precipitation || f.AirQuality
 }
 
-// fetchCountry makes an API call to the country service to get foundational country data
-// if the user requested fields that depend on it. Returns nil without error if unneeded.
-func (d *DashBoardInternal) fetchCountry(ctx context.Context, iso string, f structs.BoolFeature) (*structs.IncomingCountry, error) {
-	if !needsCountry(f) {
-		return nil, nil
-	}
-	info, err := d.counSer.GetCountry(ctx, iso)
+// fetchCountry retrieves foundational country data from the country service.
+// Country data is always required because the dashboard response header
+// (country name, ISO code) is sourced from the country API rather than
+// from the user's registration.
+func (d *DashBoardInternal) fetchCountry(ctx context.Context, query string) (*structs.IncomingCountry, error) {
+	info, err := d.counSer.GetCountry(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("country lookup for %s: %w", iso, err)
+		return nil, fmt.Errorf("country lookup for %s: %w", query, err)
 	}
 	if info == nil {
-		return nil, fmt.Errorf("country %s not found", iso)
+		return nil, fmt.Errorf("country %s not found", query)
 	}
 	return info, nil
 }
@@ -191,23 +203,22 @@ func (d *DashBoardInternal) fetchCurrencies(ctx context.Context, c *structs.Inco
 	return info
 }
 
-// --- response assembly ---
-
 // buildDashboard maps the individually fetched responses into a single combined
-// DashboardResponse payload. It strictly validates whether a piece of data
-// was historically requested by the user, and if so cleanly assigns it.
+// DashboardResponse payload. Country name and ISO code come from the country API
+// so the response always shows canonical values regardless of what the user
+// originally registered with.
 //
 // Unrequested features, or features for which failures gracefully bypassed assignment,
 // will remain unpopulated/omitted in the JSON output depending on their struct tags.
 func buildDashboard(
-	reg *structs.RegisterCountry,
 	country *structs.IncomingCountry,
 	nom *structs.NomResponse,
 	metro *structs.MetroResponse,
 	aq *structs.AqResponse,
-	cur *structs.CurrencyResponse) *structs.DashboardResponse {
+	cur *structs.CurrencyResponse,
+	req structs.BoolFeature) *structs.DashboardResponse {
+
 	feats := &structs.Features{}
-	req := reg.Features
 
 	if metro != nil {
 		temp := metro.MeanTemperature
@@ -224,21 +235,19 @@ func buildDashboard(
 	if req.Coordinates && nom != nil {
 		feats.Coordinates = &structs.CoordinateDetails{Latitude: nom.Lat, Longitude: nom.Lon}
 	}
-	if country != nil {
-		if req.Population {
-			feats.Population = country.Population
-		}
-		if req.Area {
-			feats.Area = country.Area
-		}
-		if req.Capital && len(country.Capital) > 0 {
-			feats.Capital = country.Capital[0]
-		}
+	if req.Population {
+		feats.Population = country.Population
+	}
+	if req.Area {
+		feats.Area = country.Area
+	}
+	if req.Capital && len(country.Capital) > 0 {
+		feats.Capital = country.Capital[0]
 	}
 
 	return &structs.DashboardResponse{
-		Country:       reg.Name,
-		IsoCode:       reg.IsoCode,
+		Country:       country.Name.Common,
+		IsoCode:       country.IsoCode,
 		Features:      feats,
 		LastRetrieval: time.Now().UTC().Format(config.DATE_FORMAT),
 	}
