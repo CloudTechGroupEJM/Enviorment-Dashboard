@@ -25,7 +25,7 @@ func NewCachePurgeManager(
 	return &CachePurgeManager{
 		cacheService:       cacheServiceInstance,
 		purgeIntervalHours: purgeIntervalHours,
-		stopChannel:        make(chan bool),
+		stopChannel:        make(chan bool, 1), // Buffered to prevent deadlock
 	}
 }
 

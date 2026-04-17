@@ -2,7 +2,7 @@ package cache
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"envdash/internal/store"
@@ -43,7 +43,7 @@ func GenerateCacheKey(apiNamespace string, params map[string]interface{}) (strin
 		return "", fmt.Errorf("marshaling cache key parameters: %w", err)
 	}
 
-	hash := md5.Sum(parameterJSON)
+	hash := sha256.Sum256(parameterJSON)
 	hashString := hex.EncodeToString(hash[:])
 
 	cacheKeyValue := fmt.Sprintf("%s_%s", apiNamespace, hashString)
